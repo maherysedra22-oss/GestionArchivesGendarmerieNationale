@@ -11,24 +11,14 @@ class PieceSuite extends Model
 
     protected $primaryKey = 'id_piece_suit';
 
-    public $incrementing = true;
-
-    protected $keyType = 'int';
-
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
-
     protected $fillable = [
         'nom_piece_suit',
         'actif',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'actif' => 'boolean',
-        ];
-    }
+    protected $casts = [
+        'actif' => 'boolean',
+    ];
 
     public function courriersArrives(): HasMany
     {

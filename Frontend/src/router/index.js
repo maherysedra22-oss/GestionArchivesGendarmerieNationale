@@ -2,11 +2,15 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import Login from '../views/Login.vue'
+import Roles from '../views/Roles.vue'
 import ChangePassword from '../views/ChangePassword.vue'
 import Dashboard from '../views/Dashboard.vue'
 import ComingSoon from '../views/ComingSoon.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import CourriersArrives from '../views/courriers/CourriersArrives.vue'
+import CourriersDepart from '../views/courriers/CourriersDepart.vue'
+import Utilisateurs from '../views/utilisateurs/Utilisateurs.vue'
+import JournalActivites from '../views/journal/JournalActivites.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -76,7 +80,7 @@ const router = createRouter({
         {
           path: 'courriers-depart',
           name: 'CourriersDepart',
-          component: ComingSoon,
+          component: CourriersDepart,
         },
 
         // =================================================
@@ -112,8 +116,17 @@ const router = createRouter({
         {
           path: 'utilisateurs',
           name: 'Utilisateurs',
-          component: ComingSoon,
+          component: Utilisateurs,
 
+          meta: {
+            roles: ['Administrateur'],
+          },
+        },
+
+        {
+          path: 'roles',
+          name: 'Roles',
+          component: Roles,
           meta: {
             roles: ['Administrateur'],
           },
@@ -125,7 +138,7 @@ const router = createRouter({
         {
           path: 'journal',
           name: 'Journal',
-          component: ComingSoon,
+          component: JournalActivites,
 
           meta: {
             roles: ['Administrateur'],

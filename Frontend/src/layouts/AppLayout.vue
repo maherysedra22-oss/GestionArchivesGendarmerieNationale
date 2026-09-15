@@ -1,7 +1,24 @@
-```vue
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+
+import {
+  LayoutDashboard,
+  Inbox,
+  Send,
+  FileText,
+  MapPin,
+  FolderKanban,
+  Users,
+  ShieldCheck,
+  Activity,
+  LockKeyhole,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  Shield
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -59,7 +76,6 @@ const nom = computed(() => {
 
 const nomComplet = computed(() => {
   const value = `${prenom.value} ${nom.value}`.trim()
-
   return value || 'Utilisateur'
 })
 
@@ -97,34 +113,34 @@ const grade = computed(() => {
 const menuItems = [
   {
     label: 'Tableau de bord',
-    icon: '⌂',
+    icon: LayoutDashboard,
     route: '/dashboard'
   },
   {
     label: 'Courriers arrivés',
-    icon: '↓',
+    icon: Inbox,
     route: '/courriers-arrives'
   },
   {
     label: 'Courriers départ',
-    icon: '↑',
+    icon: Send,
     route: '/courriers-depart'
   },
-  {
+  /*{
     label: 'Documents numériques',
-    icon: '▤',
+    icon: FileText,
     route: '/documents'
   },
   {
     label: 'Destinations',
-    icon: '⌖',
+    icon: MapPin,
     route: '/destinations'
   },
   {
     label: 'Classements',
-    icon: '▦',
+    icon: FolderKanban,
     route: '/classements'
-  }
+  }*/
 ]
 
 // ======================================================
@@ -134,12 +150,17 @@ const menuItems = [
 const adminItems = [
   {
     label: 'Utilisateurs',
-    icon: '♙',
+    icon: Users,
     route: '/utilisateurs'
   },
   {
+    label: 'Rôles & permissions',
+    icon: ShieldCheck,
+    route: '/roles'
+  },
+  {
     label: 'Journal des activités',
-    icon: '◷',
+    icon: Activity,
     route: '/journal'
   }
 ]
@@ -158,6 +179,7 @@ const titrePage = computed(() => {
     Destinations: 'Destinations',
     Classements: 'Classements',
     Utilisateurs: 'Utilisateurs',
+    Roles: 'Rôles & permissions',
     Journal: 'Journal des activités'
   }
 
@@ -171,13 +193,14 @@ const titrePage = computed(() => {
 const sousTitrePage = computed(() => {
   const sousTitres = {
     Dashboard: 'Gestion des archives administratives',
-    ChangePassword: 'Sécurité du compte',
+    ChangePassword: 'Sécurité et protection de votre compte',
     CourriersArrives: 'Gestion des courriers reçus',
     CourriersDepart: 'Gestion des courriers envoyés',
     Documents: 'Gestion des documents numériques',
-    Destinations: 'Gestion des destinations',
-    Classements: 'Gestion des classements',
+    Destinations: 'Gestion des destinations des courriers',
+    Classements: 'Gestion des classements administratifs',
     Utilisateurs: 'Gestion des comptes utilisateurs',
+    Roles: 'Gestion des rôles et des permissions',
     Journal: 'Suivi des activités du système'
   }
 
@@ -185,6 +208,34 @@ const sousTitrePage = computed(() => {
     sousTitres[route.name] ||
     'Système de gestion des archives'
   )
+})
+
+// ======================================================
+// ROUTE ACTIVE
+// ======================================================
+
+const isActiveRoute = (itemRoute) => {
+  return (
+    route.path === itemRoute ||
+    route.path.startsWith(`${itemRoute}/`)
+  )
+}
+
+// ======================================================
+// ICÔNE DE LA PAGE COURANTE
+// ======================================================
+
+const currentPageIcon = computed(() => {
+  const allItems = [
+    ...menuItems,
+    ...adminItems
+  ]
+
+  const currentItem = allItems.find((item) =>
+    isActiveRoute(item.route)
+  )
+
+  return currentItem?.icon || LayoutDashboard
 })
 
 // ======================================================
@@ -200,7 +251,9 @@ const closeMobileMenu = () => {
 // ======================================================
 
 const logout = async () => {
-  if (isLoggingOut.value) return
+  if (isLoggingOut.value) {
+    return
+  }
 
   isLoggingOut.value = true
 
@@ -208,16 +261,12 @@ const logout = async () => {
     localStorage.getItem('auth_token') ||
     sessionStorage.getItem('auth_token')
 
-  console.log('=== LOGOUT DEBUG ===')
-  console.log('Token présent :', !!token)
-
   try {
     if (token) {
-      const response = await fetch(
+      await fetch(
         'http://127.0.0.1:8000/api/logout',
         {
           method: 'POST',
-
           headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
@@ -225,32 +274,6 @@ const logout = async () => {
           }
         }
       )
-
-      console.log(
-        'Logout HTTP status :',
-        response.status
-      )
-
-      const data = await response
-        .json()
-        .catch(() => null)
-
-      console.log('Logout response :', data)
-
-      if (response.ok) {
-        console.log(
-          'Déconnexion Laravel réussie'
-        )
-      } else if (response.status === 401) {
-        console.warn(
-          'Token refusé par Sanctum'
-        )
-      } else {
-        console.warn(
-          'Erreur logout :',
-          response.status
-        )
-      }
     }
   } catch (error) {
     console.error(
@@ -265,14 +288,12 @@ const logout = async () => {
     sessionStorage.removeItem('utilisateur')
 
     utilisateur.value = null
-
     mobileMenuOpen.value = false
 
     router.push('/login')
   }
 }
 </script>
-
 
 <template>
   <div class="app-layout">
@@ -287,7 +308,6 @@ const logout = async () => {
       @click="closeMobileMenu"
     ></div>
 
-
     <!-- ==================================================
          SIDEBAR
     ================================================== -->
@@ -299,40 +319,38 @@ const logout = async () => {
       }"
     >
 
-      <!-- ==================================================
-           SIDEBAR HEADER
-      ================================================== -->
+      <!-- HEADER -->
 
       <div class="sidebar-header">
 
-        <div class="logo">
-          GN
+        <div class="brand">
+
+          <div class="logo">
+            <Shield
+              :size="22"
+              :stroke-width="2.4"
+            />
+          </div>
+
+          <div class="brand-text">
+            <strong>GENDARMERIE</strong>
+            <span>NATIONALE</span>
+          </div>
+
         </div>
-
-        <div class="brand-text">
-          <strong>GENDARMERIE</strong>
-
-          <span>
-            NATIONALE
-          </span>
-        </div>
-
-        <!-- Bouton fermeture mobile -->
 
         <button
+          type="button"
           class="mobile-close"
-          @click="closeMobileMenu"
           aria-label="Fermer le menu"
+          @click="closeMobileMenu"
         >
-          ×
+          <X :size="20" />
         </button>
 
       </div>
 
-
-      <!-- ==================================================
-           NAVIGATION
-      ================================================== -->
+      <!-- NAVIGATION -->
 
       <nav class="navigation">
 
@@ -347,20 +365,31 @@ const logout = async () => {
           :key="item.route"
           :to="item.route"
           class="nav-item"
-          active-class="active"
+          :class="{
+            active: isActiveRoute(item.route)
+          }"
           @click="closeMobileMenu"
         >
 
           <span class="nav-icon">
-            {{ item.icon }}
+            <component
+              :is="item.icon"
+              :size="18"
+              :stroke-width="2"
+            />
           </span>
 
           <span class="nav-label">
             {{ item.label }}
           </span>
 
-        </router-link>
+          <ChevronRight
+            v-if="isActiveRoute(item.route)"
+            class="nav-arrow"
+            :size="15"
+          />
 
+        </router-link>
 
         <!-- ADMINISTRATION -->
 
@@ -375,26 +404,35 @@ const logout = async () => {
           :key="item.route"
           :to="item.route"
           class="nav-item"
-          active-class="active"
+          :class="{
+            active: isActiveRoute(item.route)
+          }"
           @click="closeMobileMenu"
         >
 
           <span class="nav-icon">
-            {{ item.icon }}
+            <component
+              :is="item.icon"
+              :size="18"
+              :stroke-width="2"
+            />
           </span>
 
           <span class="nav-label">
             {{ item.label }}
           </span>
 
+          <ChevronRight
+            v-if="isActiveRoute(item.route)"
+            class="nav-arrow"
+            :size="15"
+          />
+
         </router-link>
 
       </nav>
 
-
-      <!-- ==================================================
-           SIDEBAR FOOTER
-      ================================================== -->
+      <!-- SIDEBAR BOTTOM -->
 
       <div class="sidebar-bottom">
 
@@ -413,13 +451,17 @@ const logout = async () => {
             </strong>
 
             <span>
+              <ShieldCheck
+                :size="11"
+                :stroke-width="2.3"
+              />
+
               {{ role }}
             </span>
 
           </div>
 
         </div>
-
 
         <!-- CHANGE PASSWORD -->
 
@@ -429,9 +471,10 @@ const logout = async () => {
           @click="closeMobileMenu"
         >
 
-          <span class="change-password-icon">
-            🔒
-          </span>
+          <LockKeyhole
+            :size="15"
+            :stroke-width="2"
+          />
 
           <span>
             Changer le mot de passe
@@ -439,18 +482,19 @@ const logout = async () => {
 
         </router-link>
 
-
         <!-- LOGOUT -->
 
         <button
+          type="button"
           class="sidebar-logout"
-          @click="logout"
           :disabled="isLoggingOut"
+          @click="logout"
         >
 
-          <span>
-            ↪
-          </span>
+          <LogOut
+            :size="16"
+            :stroke-width="2"
+          />
 
           <span>
             {{
@@ -466,44 +510,56 @@ const logout = async () => {
 
     </aside>
 
-
     <!-- ==================================================
          MAIN
     ================================================== -->
 
     <main class="main-content">
 
-      <!-- ==================================================
-           TOPBAR
-      ================================================== -->
+      <!-- TOPBAR -->
 
       <header class="topbar">
 
         <!-- MOBILE MENU -->
 
         <button
+          type="button"
           class="menu-toggle"
-          @click="mobileMenuOpen = true"
           aria-label="Ouvrir le menu"
+          @click="mobileMenuOpen = true"
         >
-          ☰
+          <Menu :size="20" />
         </button>
-
 
         <!-- PAGE TITLE -->
 
         <div class="topbar-title">
 
-          <h1>
-            {{ titrePage }}
-          </h1>
+          <div class="title-with-icon">
 
-          <p>
-            {{ sousTitrePage }}
-          </p>
+            <div class="page-title-icon">
+              <component
+                :is="currentPageIcon"
+                :size="19"
+                :stroke-width="2"
+              />
+            </div>
+
+            <div>
+
+              <h1>
+                {{ titrePage }}
+              </h1>
+
+              <p>
+                {{ sousTitrePage }}
+              </p>
+
+            </div>
+
+          </div>
 
         </div>
-
 
         <!-- USER -->
 
@@ -529,15 +585,10 @@ const logout = async () => {
 
       </header>
 
-
-      <!-- ==================================================
-           PAGE CONTENT
-      ================================================== -->
+      <!-- PAGE CONTENT -->
 
       <div class="page-content">
-
         <router-view />
-
       </div>
 
     </main>
@@ -545,9 +596,7 @@ const logout = async () => {
   </div>
 </template>
 
-
 <style scoped>
-
 /* ======================================================
    RESET
 ====================================================== */
@@ -558,9 +607,7 @@ const logout = async () => {
 
 .app-layout {
   min-height: 100vh;
-
   background: #f5f7fa;
-
   color: #243b53;
 
   font-family:
@@ -570,14 +617,12 @@ const logout = async () => {
     sans-serif;
 }
 
-
 /* ======================================================
    SIDEBAR
 ====================================================== */
 
 .sidebar {
   position: fixed;
-
   top: 0;
   left: 0;
   bottom: 0;
@@ -587,19 +632,24 @@ const logout = async () => {
   display: flex;
   flex-direction: column;
 
-  background: #08264d;
+  background:
+    linear-gradient(
+      180deg,
+      #061c36 0%,
+      #08264d 100%
+    );
 
   color: white;
 
   z-index: 1000;
 
   box-shadow:
-    5px 0 25px rgba(8, 38, 77, 0.12);
+    5px 0 25px
+    rgba(8, 38, 77, 0.14);
 
   transition:
     transform 0.25s ease;
 }
-
 
 /* ======================================================
    SIDEBAR HEADER
@@ -611,35 +661,37 @@ const logout = async () => {
   display: flex;
   align-items: center;
 
-  gap: 12px;
-
-  padding: 0 22px;
+  padding: 0 20px;
 
   border-bottom:
-    1px solid rgba(255, 255, 255, 0.08);
+    1px solid
+    rgba(255, 255, 255, 0.08);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .logo {
-  width: 44px;
-  height: 44px;
-
-  flex-shrink: 0;
+  width: 43px;
+  height: 43px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border-radius: 50%;
+  flex-shrink: 0;
+
+  border-radius: 12px;
 
   background: #d5b45c;
-
   color: #08264d;
 
-  font-size: 13px;
-  font-weight: 900;
-
-  border:
-    2px solid rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 5px 15px
+    rgba(0, 0, 0, 0.15);
 }
 
 .brand-text {
@@ -651,6 +703,7 @@ const logout = async () => {
   color: white;
 
   font-size: 13px;
+  font-weight: 800;
 
   letter-spacing: 0.8px;
 }
@@ -661,12 +714,10 @@ const logout = async () => {
   color: #d5b45c;
 
   font-size: 9px;
+  font-weight: 700;
 
   letter-spacing: 2px;
-
-  font-weight: 700;
 }
-
 
 /* ======================================================
    NAVIGATION
@@ -680,13 +731,23 @@ const logout = async () => {
   overflow-y: auto;
 }
 
+.navigation::-webkit-scrollbar {
+  width: 4px;
+}
+
+.navigation::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.12);
+
+  border-radius: 20px;
+}
+
 .nav-section-title {
   padding: 0 11px 9px;
 
   color: #8fa8c2;
 
   font-size: 9px;
-
   font-weight: 800;
 
   letter-spacing: 1.5px;
@@ -696,13 +757,14 @@ const logout = async () => {
   margin-top: 22px;
 }
 
-
 /* ======================================================
    NAV ITEM
 ====================================================== */
 
 .nav-item {
-  min-height: 44px;
+  position: relative;
+
+  min-height: 45px;
 
   display: flex;
   align-items: center;
@@ -710,17 +772,15 @@ const logout = async () => {
   gap: 12px;
 
   margin: 3px 0;
-
   padding: 10px 12px;
 
-  border-radius: 7px;
+  border-radius: 9px;
 
   color: #dbe7f2;
 
   text-decoration: none;
 
   font-size: 12px;
-
   font-weight: 500;
 
   transition:
@@ -731,7 +791,7 @@ const logout = async () => {
 
 .nav-item:hover {
   background:
-    rgba(255, 255, 255, 0.08);
+    rgba(255, 255, 255, 0.075);
 
   color: white;
 
@@ -740,33 +800,44 @@ const logout = async () => {
 }
 
 .nav-item.active {
-  background: #d5b45c;
+  background:
+    linear-gradient(
+      90deg,
+      #d5b45c,
+      #e2c77b
+    );
 
   color: #08264d;
 
   font-weight: 800;
 
   box-shadow:
-    0 5px 15px rgba(0, 0, 0, 0.12);
+    0 6px 16px
+    rgba(0, 0, 0, 0.13);
 }
 
 .nav-icon {
   width: 22px;
 
   display: flex;
-
   align-items: center;
   justify-content: center;
 
-  font-size: 16px;
-
-  font-weight: 800;
+  flex-shrink: 0;
 }
 
 .nav-label {
+  flex: 1;
+
+  overflow: hidden;
+
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
+.nav-arrow {
+  flex-shrink: 0;
+}
 
 /* ======================================================
    SIDEBAR BOTTOM
@@ -776,12 +847,12 @@ const logout = async () => {
   padding: 15px;
 
   border-top:
-    1px solid rgba(255, 255, 255, 0.08);
+    1px solid
+    rgba(255, 255, 255, 0.08);
 }
 
-
 /* ======================================================
-   SIDEBAR USER
+   USER CARD
 ====================================================== */
 
 .sidebar-user {
@@ -791,26 +862,30 @@ const logout = async () => {
   gap: 10px;
 
   margin-bottom: 12px;
+  padding: 8px;
+
+  border-radius: 10px;
+
+  background:
+    rgba(255, 255, 255, 0.045);
 }
 
 .avatar {
-  width: 38px;
-  height: 38px;
-
-  flex-shrink: 0;
+  width: 39px;
+  height: 39px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
+  flex-shrink: 0;
+
   border-radius: 50%;
 
   background: #d5b45c;
-
   color: #08264d;
 
-  font-size: 12px;
-
+  font-size: 11px;
   font-weight: 900;
 }
 
@@ -829,18 +904,21 @@ const logout = async () => {
   font-size: 11px;
 
   white-space: nowrap;
-
   text-overflow: ellipsis;
 }
 
 .sidebar-user-info span {
+  display: flex;
+  align-items: center;
+
+  gap: 4px;
+
   margin-top: 3px;
 
   color: #9fb3c8;
 
   font-size: 9px;
 }
-
 
 /* ======================================================
    CHANGE PASSWORD
@@ -852,23 +930,23 @@ const logout = async () => {
   display: flex;
   align-items: center;
 
-  gap: 8px;
+  gap: 9px;
 
   margin-bottom: 8px;
-
   padding: 8px 10px;
 
-  border-radius: 7px;
+  border-radius: 8px;
 
   color: #dbe7f2;
 
   text-decoration: none;
 
   font-size: 10px;
-
   font-weight: 600;
 
-  transition: 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .change-password:hover {
@@ -878,18 +956,12 @@ const logout = async () => {
   color: white;
 }
 
-.change-password-icon {
-  font-size: 13px;
-}
-
-
 /* ======================================================
    LOGOUT
 ====================================================== */
 
 .sidebar-logout {
   width: 100%;
-
   min-height: 40px;
 
   display: flex;
@@ -899,9 +971,10 @@ const logout = async () => {
   gap: 8px;
 
   border:
-    1px solid rgba(255, 255, 255, 0.14);
+    1px solid
+    rgba(255, 255, 255, 0.14);
 
-  border-radius: 7px;
+  border-radius: 8px;
 
   background:
     rgba(255, 255, 255, 0.06);
@@ -911,23 +984,28 @@ const logout = async () => {
   cursor: pointer;
 
   font-size: 11px;
-
   font-weight: 700;
 
-  transition: 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .sidebar-logout:hover {
   background:
     rgba(255, 255, 255, 0.12);
+
+  transform:
+    translateY(-1px);
 }
 
 .sidebar-logout:disabled {
   opacity: 0.6;
 
   cursor: not-allowed;
-}
 
+  transform: none;
+}
 
 /* ======================================================
    MAIN
@@ -939,12 +1017,17 @@ const logout = async () => {
   margin-left: 270px;
 }
 
-
 /* ======================================================
    TOPBAR
 ====================================================== */
 
 .topbar {
+  position: sticky;
+
+  top: 0;
+
+  z-index: 900;
+
   min-height: 82px;
 
   display: flex;
@@ -953,12 +1036,15 @@ const logout = async () => {
 
   padding: 0 32px;
 
-  background: white;
+  background:
+    rgba(255, 255, 255, 0.96);
+
+  backdrop-filter:
+    blur(10px);
 
   border-bottom:
     1px solid #e5eaf0;
 }
-
 
 /* ======================================================
    TOPBAR TITLE
@@ -968,13 +1054,36 @@ const logout = async () => {
   min-width: 0;
 }
 
+.title-with-icon {
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+}
+
+.page-title-icon {
+  width: 37px;
+  height: 37px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 9px;
+
+  background: #eef3f8;
+
+  color: #08264d;
+}
+
 .topbar-title h1 {
   margin: 0;
 
   color: #08264d;
 
   font-size: 21px;
-
   font-weight: 800;
 }
 
@@ -985,7 +1094,6 @@ const logout = async () => {
 
   font-size: 11px;
 }
-
 
 /* ======================================================
    TOPBAR USER
@@ -1027,20 +1135,25 @@ const logout = async () => {
   align-items: center;
   justify-content: center;
 
+  flex-shrink: 0;
+
   border-radius: 50%;
 
-  background: #e8eef5;
+  background:
+    linear-gradient(
+      135deg,
+      #eef3f8,
+      #dfe8f1
+    );
 
   color: #08264d;
 
   font-size: 12px;
-
   font-weight: 900;
 
   border:
     2px solid #d5b45c;
 }
-
 
 /* ======================================================
    MOBILE MENU BUTTON
@@ -1049,9 +1162,18 @@ const logout = async () => {
 .menu-toggle {
   display: none;
 
-  border: 1px solid #e0e6ec;
+  width: 38px;
+  height: 38px;
 
-  border-radius: 7px;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border:
+    1px solid #e0e6ec;
+
+  border-radius: 8px;
 
   background: white;
 
@@ -1060,7 +1182,6 @@ const logout = async () => {
   cursor: pointer;
 }
 
-
 /* ======================================================
    PAGE CONTENT
 ====================================================== */
@@ -1068,9 +1189,9 @@ const logout = async () => {
 .page-content {
   width: 100%;
 
-  min-height: calc(100vh - 82px);
+  min-height:
+    calc(100vh - 82px);
 }
-
 
 /* ======================================================
    MOBILE CLOSE
@@ -1078,24 +1199,40 @@ const logout = async () => {
 
 .mobile-close {
   display: none;
+
+  margin-left: auto;
+
+  width: 31px;
+  height: 31px;
+
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+
+  border-radius: 7px;
+
+  background:
+    rgba(255, 255, 255, 0.06);
+
+  color: white;
+
+  cursor: pointer;
 }
 
-
 /* ======================================================
-   OVERLAY
+   MOBILE OVERLAY
 ====================================================== */
 
 .mobile-overlay {
   display: none;
 }
 
-
 /* ======================================================
    TABLET
 ====================================================== */
 
 @media (max-width: 1100px) {
-
   .sidebar {
     width: 235px;
   }
@@ -1107,16 +1244,13 @@ const logout = async () => {
   .topbar {
     padding: 0 25px;
   }
-
 }
-
 
 /* ======================================================
    TABLET / MOBILE
 ====================================================== */
 
 @media (max-width: 800px) {
-
   .sidebar {
     width: 270px;
 
@@ -1124,7 +1258,8 @@ const logout = async () => {
       translateX(-100%);
 
     box-shadow:
-      10px 0 35px rgba(0, 0, 0, 0.18);
+      10px 0 35px
+      rgba(0, 0, 0, 0.18);
   }
 
   .sidebar.sidebar-open {
@@ -1147,17 +1282,7 @@ const logout = async () => {
   }
 
   .menu-toggle {
-    width: 38px;
-    height: 38px;
-
     display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    flex-shrink: 0;
-
-    font-size: 18px;
   }
 
   .topbar-title {
@@ -1194,25 +1319,7 @@ const logout = async () => {
   }
 
   .mobile-close {
-    margin-left: auto;
-
     display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    width: 30px;
-    height: 30px;
-
-    border: 0;
-
-    background: transparent;
-
-    color: white;
-
-    cursor: pointer;
-
-    font-size: 23px;
   }
 
   .mobile-overlay {
@@ -1226,22 +1333,22 @@ const logout = async () => {
       rgba(0, 0, 0, 0.45);
 
     z-index: 999;
+
+    backdrop-filter:
+      blur(2px);
   }
 
   .page-content {
     min-height:
       calc(100vh - 70px);
   }
-
 }
-
 
 /* ======================================================
    MOBILE
 ====================================================== */
 
 @media (max-width: 600px) {
-
   .topbar {
     padding: 0 14px;
   }
@@ -1254,15 +1361,17 @@ const logout = async () => {
     font-size: 9px;
   }
 
+  .page-title-icon {
+    width: 33px;
+    height: 33px;
+  }
 }
-
 
 /* ======================================================
    SMALL MOBILE
 ====================================================== */
 
 @media (max-width: 380px) {
-
   .brand-text strong {
     font-size: 11px;
   }
@@ -1278,9 +1387,7 @@ const logout = async () => {
   .sidebar {
     width: 255px;
   }
-
 }
-
 
 /* ======================================================
    ACCESSIBILITY
@@ -1289,10 +1396,9 @@ const logout = async () => {
 button:focus-visible,
 a:focus-visible {
   outline:
-    3px solid rgba(213, 180, 92, 0.5);
+    3px solid
+    rgba(213, 180, 92, 0.5);
 
   outline-offset: 2px;
 }
-
 </style>
-```

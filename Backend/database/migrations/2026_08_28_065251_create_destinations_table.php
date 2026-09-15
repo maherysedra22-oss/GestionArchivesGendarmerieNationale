@@ -9,15 +9,22 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('destinations', function (Blueprint $table) {
+
             $table->increments('id_desti');
 
-            $table->string('lib_officiel_desti', 255)->unique();
+            $table->string(
+                'lib_officiel_desti',
+                255
+            )->unique();
 
-            $table->boolean('actif')->default(true);
+            $table->boolean('actif')
+                ->default(true);
 
-            $table->timestampTz('created_at')->useCurrent();
+            $table->timestampTz('created_at')
+                ->useCurrent();
 
-            $table->timestampTz('updated_at')->useCurrent();
+            $table->timestampTz('updated_at')
+                ->useCurrent();
         });
     }
 

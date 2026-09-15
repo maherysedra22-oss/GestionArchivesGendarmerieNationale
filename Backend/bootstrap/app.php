@@ -15,16 +15,19 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
-    $middleware->redirectGuestsTo(function ($request) {
-        if ($request->is('api/*')) {
-            return null;
-        }
+        $middleware->redirectGuestsTo(function ($request) {
+            if ($request->is('api/*')) {
+                return null;
+            }
 
-        return '/login';
-    });
+            return '/login';
+        });
+
+        $middleware->alias([
+            'permission' => \App\Http\Middleware\CheckPermission::class,
+        ]);
 
     })
-
     ->withExceptions(function (Exceptions $exceptions): void {
 
     // Toutes les routes API doivent retourner du JSON

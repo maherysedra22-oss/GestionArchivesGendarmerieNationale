@@ -9,19 +9,29 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('documents_courriers_depart', function (Blueprint $table) {
+
+            // Courrier départ
             $table->unsignedInteger('num_ordre_dep');
 
+            // Document numérique
             $table->unsignedInteger('num_doc');
 
-            $table->primary(
-                ['num_ordre_dep', 'num_doc']
-            );
 
+            // Clé primaire composée
+            $table->primary([
+                'num_ordre_dep',
+                'num_doc'
+            ]);
+
+
+            // Foreign Key Courrier
             $table->foreign('num_ordre_dep')
                 ->references('num_ordre_dep')
                 ->on('courriers_depart')
                 ->onDelete('cascade');
 
+
+            // Foreign Key Document
             $table->foreign('num_doc')
                 ->references('num_doc')
                 ->on('documents_numeriques')
@@ -31,6 +41,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('documents_courriers_depart');
+        Schema::dropIfExists(
+            'documents_courriers_depart'
+        );
     }
 };

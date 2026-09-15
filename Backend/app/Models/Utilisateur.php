@@ -71,6 +71,20 @@ class Utilisateur extends Authenticatable
         );
     }
 
+
+    //Vérifie si l'utilisateur possède une permission donnée.
+    
+    public function hasPermission(string $codePermission): bool
+    {
+        return $this->statut
+            && $this->role
+            && $this->role->actif
+            && $this->role->permissions()
+                ->where('code_permission', $codePermission)
+                ->where('actif', true)
+                ->exists();
+    }
+
     public function journaux(): HasMany
     {
         return $this->hasMany(

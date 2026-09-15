@@ -15,7 +15,7 @@ class CourrierDepart extends Model
 
     protected $primaryKey = 'num_ordre_dep';
 
-    public $incrementing = true;
+    public $incrementing = false;
 
     protected $keyType = 'int';
 
@@ -24,14 +24,12 @@ class CourrierDepart extends Model
     const DELETED_AT = 'deleted_at';
 
     protected $fillable = [
-        'reference',
+        'num_ordre_dep',
         'date_dep',
         'num_nat',
         'objet_courr_dep',
         'id_class',
         'id_utilisateur_creation',
-        'priorite',
-        'observations',
     ];
 
     protected function casts(): array
@@ -41,6 +39,9 @@ class CourrierDepart extends Model
         ];
     }
 
+    /**
+     * Nature du courrier départ.
+     */
     public function nature(): BelongsTo
     {
         return $this->belongsTo(
@@ -50,6 +51,9 @@ class CourrierDepart extends Model
         );
     }
 
+    /**
+     * Classement du courrier.
+     */
     public function classement(): BelongsTo
     {
         return $this->belongsTo(
@@ -59,6 +63,9 @@ class CourrierDepart extends Model
         );
     }
 
+    /**
+     * Utilisateur créateur du courrier.
+     */
     public function utilisateurCreation(): BelongsTo
     {
         return $this->belongsTo(
@@ -68,6 +75,9 @@ class CourrierDepart extends Model
         );
     }
 
+    /**
+     * Destinations du courrier.
+     */
     public function destinations(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -78,6 +88,9 @@ class CourrierDepart extends Model
         );
     }
 
+    /**
+     * Documents numériques associés au courrier.
+     */
     public function documents(): BelongsToMany
     {
         return $this->belongsToMany(

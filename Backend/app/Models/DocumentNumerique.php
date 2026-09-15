@@ -19,10 +19,6 @@ class DocumentNumerique extends Model
 
     protected $keyType = 'int';
 
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
-    const DELETED_AT = 'deleted_at';
-
     protected $fillable = [
         'nom_original',
         'nom_stockage',
@@ -34,13 +30,16 @@ class DocumentNumerique extends Model
         'id_utilisateur_upload',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'taille' => 'integer',
-        ];
-    }
+    protected $casts = [
+        'taille' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
 
+    /**
+     * Utilisateur qui a uploadé le document.
+     */
     public function utilisateurUpload(): BelongsTo
     {
         return $this->belongsTo(
@@ -50,23 +49,29 @@ class DocumentNumerique extends Model
         );
     }
 
+    /**
+     * Courriers arrivés associés.
+     */
     public function courriersArrives(): BelongsToMany
     {
-    return $this->belongsToMany(
-        CourrierArrive::class,
-        'documents_courriers_arrives',
-        'num_doc',
-        'num_enreg_courr_arr'
-    );
+        return $this->belongsToMany(
+            CourrierArrive::class,
+            'documents_courriers_arrives',
+            'num_doc',
+            'num_enreg_courr_arr'
+        );
     }
 
+    /**
+     * Courriers départ associés.
+     */
     public function courriersDepart(): BelongsToMany
     {
-    return $this->belongsToMany(
-        CourrierDepart::class,
-        'documents_courriers_depart',
-        'num_doc',
-        'num_ordre_dep'
-    );
+        return $this->belongsToMany(
+            CourrierDepart::class,
+            'documents_courriers_depart',
+            'num_doc',
+            'num_ordre_dep'
+        );
     }
 }

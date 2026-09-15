@@ -4,117 +4,176 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CourrierArrive;
+use App\Models\DocumentNumerique;
 use App\Services\JournalActiviteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class CourrierArriveController extends Controller
 {
+    /**
+     * ============================================================
+     * LISTE DES COURRIERS ARRIVÉS
+     * ============================================================
+     */
     public function index(Request $request)
     {
-    $query = CourrierArrive::with([
-        'pieceSuite',
-        'classement',
-        'utilisateurCreation',
-        'documents'
-    ]);
+        $query = CourrierArrive::with([
+            'pieceSuite',
+            'utilisateurCreation',
+            'documents'
+        ]);
 
-    // 🔎 Recherche globale
-    if ($request->filled('search')) {
-        $search = $request->search;
+        /*
+        |--------------------------------------------------------------------------
+        | Recherche globale
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('search')) {
+            $search = trim($request->search);
 
-        $query->where(function ($q) use ($search) {
-            $q->where('reference', 'ILIKE', "%{$search}%")
-              ->orWhere('num_ordre_orig', 'ILIKE', "%{$search}%")
-              ->orWhere('lib_orig', 'ILIKE', "%{$search}%")
-              ->orWhere('objet_courr_arri', 'ILIKE', "%{$search}%");
-        });
+            $query->where(function ($q) use ($search) {
+                $q->where('num_ordre_orig', 'ILIKE', "%{$search}%")
+                    ->orWhere('lib_orig', 'ILIKE', "%{$search}%")
+                    ->orWhere('objet_courr_arri', 'ILIKE', "%{$search}%");
+            });
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre priorité
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('priorite')) {
+            $query->where('priorite', $request->priorite);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre statut
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('statut_dossier')) {
+            $query->where(
+                'statut_dossier',
+                $request->statut_dossier
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre pièce de suite
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('id_piece_suit')) {
+            $query->where(
+                'id_piece_suit',
+                $request->id_piece_suit
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre date début
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('date_debut')) {
+            $query->whereDate(
+                'date_enreg',
+                '>=',
+                $request->date_debut
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre date fin
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('date_fin')) {
+            $query->whereDate(
+                'date_enreg',
+                '<=',
+                $request->date_fin
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Tri sécurisé
+        |--------------------------------------------------------------------------
+        */
+        $allowedSorts = [
+            'num_enreg_courr_arr',
+            'date_enreg',
+            'num_ordre_orig',
+            'lib_orig',
+            'priorite',
+            'statut_dossier',
+            'created_at',
+        ];
+
+        $sort = $request->get(
+            'sort',
+            'num_enreg_courr_arr'
+        );
+
+        if (!in_array($sort, $allowedSorts, true)) {
+            $sort = 'num_enreg_courr_arr';
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Direction du tri
+        |--------------------------------------------------------------------------
+        */
+        $direction = strtolower(
+            $request->get('direction', 'desc')
+        );
+
+        if (!in_array($direction, ['asc', 'desc'], true)) {
+            $direction = 'desc';
+        }
+
+        $query->orderBy($sort, $direction);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
+        $perPage = (int) $request->get('per_page', 10);
+
+        if ($perPage < 1) {
+            $perPage = 10;
+        }
+
+        if ($perPage > 100) {
+            $perPage = 100;
+        }
+
+        $courriers = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Liste des courriers arrivés récupérée avec succès.',
+            'data' => $courriers,
+        ]);
     }
 
-    // 🎯 Filtre priorité
-    if ($request->filled('priorite')) {
-        $query->where('priorite', $request->priorite);
-    }
 
-    // 📁 Filtre classement
-    if ($request->filled('id_class')) {
-        $query->where('id_class', $request->id_class);
-    }
-
-    // 📅 Filtre date début
-    if ($request->filled('date_debut')) {
-        $query->whereDate('date_enreg', '>=', $request->date_debut);
-    }
-
-    // 📅 Filtre date fin
-    if ($request->filled('date_fin')) {
-        $query->whereDate('date_enreg', '<=', $request->date_fin);
-    }
-
-    // 🔢 Tri sécurisé
-    $allowedSorts = [
-        'num_enreg_courr_arr',
-        'reference',
-        'date_enreg',
-        'num_ordre_orig',
-        'lib_orig',
-        'priorite',
-        'created_at',
-    ];
-
-    $sortBy = $request->get('sort_by', 'created_at');
-
-    if (!in_array($sortBy, $allowedSorts)) {
-        $sortBy = 'created_at';
-    }
-
-    $sortDirection = strtolower(
-        $request->get('sort_direction', 'desc')
-    );
-
-    if (!in_array($sortDirection, ['asc', 'desc'])) {
-        $sortDirection = 'desc';
-    }
-
-    $query->orderBy($sortBy, $sortDirection);
-
-    // 📄 Pagination
-    $perPage = (int) $request->get('per_page', 10);
-
-    if ($perPage < 1) {
-        $perPage = 10;
-    }
-
-    if ($perPage > 100) {
-        $perPage = 100;
-    }
-
-    $courriers = $query->paginate($perPage);
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Liste des courriers arrivés récupérée avec succès.',
-        'data' => $courriers,
-    ]);
-    }
-
-
+    /**
+     * ============================================================
+     * CRÉER UN COURRIER ARRIVÉ
+     * ============================================================
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'reference' => [
-                'required',
-                'string',
-                'max:30',
-                'unique:courriers_arrives,reference',
-            ],
-
-            'date_enreg' => [
-                'required',
-                'date',
-            ],
-
             'num_ordre_orig' => [
                 'required',
                 'string',
@@ -138,10 +197,285 @@ class CourrierArriveController extends Controller
                 'exists:pieces_suite,id_piece_suit',
             ],
 
-            'id_class' => [
+            /*
+            |--------------------------------------------------------------------------
+            | Priorité
+            |--------------------------------------------------------------------------
+            */
+            'priorite' => [
+                'nullable',
+                Rule::in([
+                    'NORMAL',
+                    'URGENT',
+                    'TRES_URGENT',
+                ]),
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Statut
+            |--------------------------------------------------------------------------
+            | IMPORTANT :
+            | PostgreSQL accepte exactement :
+            | En cours
+            | Lecture
+            | Archivé
+            |--------------------------------------------------------------------------
+            */
+            'statut_dossier' => [
+                'nullable',
+                Rule::in([
+                    'En cours',
+                    'Lecture',
+                    'Archivé',
+                ]),
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Documents facultatifs
+            |--------------------------------------------------------------------------
+            */
+            'documents' => [
+                'nullable',
+                'array',
+            ],
+
+            'documents.*' => [
+                'file',
+                'mimes:pdf,doc,docx,jpg,jpeg,png',
+                'max:10240',
+            ],
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Création du courrier
+            |--------------------------------------------------------------------------
+            */
+            $courrier = CourrierArrive::create([
+                'num_ordre_orig' => $validated['num_ordre_orig'],
+                'lib_orig' => $validated['lib_orig'],
+                'objet_courr_arri' => $validated['objet_courr_arri'],
+
+                'id_piece_suit' => $validated['id_piece_suit'],
+
+                'id_utilisateur_creation' => Auth::id(),
+
+                'priorite' => $validated['priorite']
+                    ?? 'NORMAL',
+
+                'statut_dossier' => $validated['statut_dossier']
+                    ?? 'En cours',
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Ajouter les documents s'ils existent
+            |--------------------------------------------------------------------------
+            */
+            if ($request->hasFile('documents')) {
+
+                foreach ($request->file('documents') as $file) {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Informations du fichier
+                    |--------------------------------------------------------------------------
+                    */
+                    $nomOriginal = $file->getClientOriginalName();
+
+                    $extension = strtolower(
+                        $file->getClientOriginalExtension()
+                    );
+
+                    $typeMime = $file->getMimeType();
+
+                    $taille = $file->getSize();
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Calcul checksum SHA-256
+                    |--------------------------------------------------------------------------
+                    */
+                    $checksumSha256 = hash_file(
+                        'sha256',
+                        $file->getRealPath()
+                    );
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Nom physique unique
+                    |--------------------------------------------------------------------------
+                    */
+                    $nomStockage = Str::uuid()->toString()
+                        . '.'
+                        . $extension;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Dossier de stockage
+                    |--------------------------------------------------------------------------
+                    */
+                    $dossier = 'documents/courriers-arrives/'
+                        . $courrier->num_enreg_courr_arr;
+
+                    $chemin = $dossier . '/' . $nomStockage;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Stockage physique
+                    |--------------------------------------------------------------------------
+                    */
+                    Storage::disk('public')->putFileAs(
+                        $dossier,
+                        $file,
+                        $nomStockage
+                    );
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Création document numérique
+                    |--------------------------------------------------------------------------
+                    */
+                    $document = DocumentNumerique::create([
+                        'nom_original' => $nomOriginal,
+                        'nom_stockage' => $nomStockage,
+                        'extension' => $extension,
+                        'type_mime' => $typeMime,
+                        'taille' => $taille,
+                        'chemin' => $chemin,
+                        'checksum_sha256' => $checksumSha256,
+                        'id_utilisateur_upload' => Auth::id(),
+                    ]);
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Association courrier ↔ document
+                    |--------------------------------------------------------------------------
+                    */
+                    $courrier->documents()->attach(
+                        $document->num_doc
+                    );
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Journalisation CREATE
+            |--------------------------------------------------------------------------
+            */
+            JournalActiviteService::enregistrer(
+                'CREATE',
+                'courriers_arrives',
+                $courrier->num_enreg_courr_arr,
+                'ORD-' . $courrier->num_enreg_courr_arr,
+                null,
+                $courrier->toArray()
+            );
+
+            DB::commit();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Charger les relations
+            |--------------------------------------------------------------------------
+            */
+            $courrier->load([
+                'pieceSuite',
+                'utilisateurCreation',
+                'documents',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Courrier arrivé créé avec succès.',
+                'data' => $courrier,
+            ], 201);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la création du courrier arrivé.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * ============================================================
+     * AFFICHER UN COURRIER ARRIVÉ
+     * ============================================================
+     */
+    public function show(int $id)
+    {
+        $courrier = CourrierArrive::with([
+            'pieceSuite',
+            'utilisateurCreation',
+            'documents',
+        ])->find($id);
+
+        if (!$courrier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Courrier arrivé introuvable.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Courrier arrivé récupéré avec succès.',
+            'data' => $courrier,
+        ]);
+    }
+
+
+    /**
+     * ============================================================
+     * MODIFIER UN COURRIER ARRIVÉ
+     * ============================================================
+     */
+    public function update(Request $request, int $id)
+    {
+        $courrier = CourrierArrive::find($id);
+
+        if (!$courrier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Courrier arrivé introuvable.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'num_ordre_orig' => [
+                'required',
+                'string',
+                'max:100',
+            ],
+
+            'lib_orig' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'objet_courr_arri' => [
+                'required',
+                'string',
+            ],
+
+            'id_piece_suit' => [
                 'required',
                 'integer',
-                'exists:classements,id_class',
+                'exists:pieces_suite,id_piece_suit',
             ],
 
             'priorite' => [
@@ -153,178 +487,413 @@ class CourrierArriveController extends Controller
                 ]),
             ],
 
-            'observations' => [
-                'nullable',
-                'string',
+            'statut_dossier' => [
+                'required',
+                Rule::in([
+                    'En cours',
+                    'Lecture',
+                    'Archivé',
+                ]),
             ],
         ]);
 
-        $validated['id_utilisateur_creation'] = Auth::id();
+        /*
+        |--------------------------------------------------------------------------
+        | Données avant modification
+        |--------------------------------------------------------------------------
+        */
+        $donneesAvant = $courrier->toArray();
 
-        $courrier = CourrierArrive::create($validated);
+        /*
+        |--------------------------------------------------------------------------
+        | Modification
+        |--------------------------------------------------------------------------
+        */
+        $courrier->update([
+            'num_ordre_orig' => $validated['num_ordre_orig'],
+            'lib_orig' => $validated['lib_orig'],
+            'objet_courr_arri' => $validated['objet_courr_arri'],
+            'id_piece_suit' => $validated['id_piece_suit'],
+            'priorite' => $validated['priorite'],
+            'statut_dossier' => $validated['statut_dossier'],
+        ]);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Journalisation UPDATE
+        |--------------------------------------------------------------------------
+        */
         JournalActiviteService::enregistrer(
-            'CREATE',
+            'UPDATE',
             'courriers_arrives',
             $courrier->num_enreg_courr_arr,
-            $courrier->reference,
-            null,
+            'ORD-' . $courrier->num_enreg_courr_arr,
+            $donneesAvant,
             $courrier->toArray()
         );
 
         $courrier->load([
             'pieceSuite',
-            'classement',
             'utilisateurCreation',
             'documents',
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Courrier arrivé créé avec succès.',
+            'message' => 'Courrier arrivé modifié avec succès.',
             'data' => $courrier,
-        ], 201);
+        ]);
     }
 
-    public function show(int $courriers_arrife)
-    {
-    $courrier = CourrierArrive::with([
-        'pieceSuite',
-        'classement',
-        'utilisateurCreation',
-        'documents',
-    ])->findOrFail($courriers_arrife);
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Courrier arrivé récupéré avec succès.',
-        'data' => $courrier,
-    ]);
+    /**
+     * ============================================================
+     * MODIFIER UNIQUEMENT LE STATUT
+     * ============================================================
+     */
+    public function updateStatut(Request $request, int $id)
+    {
+        $courrier = CourrierArrive::find($id);
+
+        if (!$courrier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Courrier arrivé introuvable.',
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'statut_dossier' => [
+                'required',
+                Rule::in([
+                    'En cours',
+                    'Lecture',
+                    'Archivé',
+                ]),
+            ],
+        ]);
+
+        $ancienStatut = $courrier->statut_dossier;
+
+        $courrier->update([
+            'statut_dossier' => $validated['statut_dossier'],
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Journalisation changement statut
+        |--------------------------------------------------------------------------
+        */
+        JournalActiviteService::enregistrer(
+            'UPDATE_STATUT',
+            'courriers_arrives',
+            $courrier->num_enreg_courr_arr,
+            'ORD-' . $courrier->num_enreg_courr_arr,
+            [
+                'statut_dossier' => $ancienStatut,
+            ],
+            [
+                'statut_dossier' => $courrier->statut_dossier,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Statut du courrier arrivé modifié avec succès.',
+            'data' => $courrier,
+        ]);
     }
 
-    public function update(Request $request, int $courriers_arrife)
+
+    /**
+     * ============================================================
+     * AJOUTER DES DOCUMENTS À UN COURRIER EXISTANT
+     * ============================================================
+     */
+    public function ajouterDocuments(Request $request, int $id)
     {
-    $courrier = CourrierArrive::findOrFail($courriers_arrife);
+        $courrier = CourrierArrive::find($id);
 
-    $validated = $request->validate([
-        'reference' => [
-            'required',
-            'string',
-            'max:30',
-            Rule::unique('courriers_arrives', 'reference')
-                ->ignore(
-                    $courriers_arrife,
-                    'num_enreg_courr_arr'
-                ),
-        ],
+        if (!$courrier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Courrier arrivé introuvable.',
+            ], 404);
+        }
 
-        'date_enreg' => [
-            'required',
-            'date',
-        ],
+        $validated = $request->validate([
+            'documents' => [
+                'required',
+                'array',
+                'min:1',
+            ],
 
-        'num_ordre_orig' => [
-            'required',
-            'string',
-            'max:100',
-        ],
+            'documents.*' => [
+                'file',
+                'mimes:pdf,doc,docx,jpg,jpeg,png',
+                'max:10240',
+            ],
+        ]);
 
-        'lib_orig' => [
-            'required',
-            'string',
-            'max:255',
-        ],
+        $documentsAjoutes = [];
 
-        'objet_courr_arri' => [
-            'required',
-            'string',
-        ],
+        DB::beginTransaction();
 
-        'id_piece_suit' => [
-            'required',
-            'integer',
-            'exists:pieces_suite,id_piece_suit',
-        ],
+        try {
 
-        'id_class' => [
-            'required',
-            'integer',
-            'exists:classements,id_class',
-        ],
+            foreach ($validated['documents'] as $file) {
 
-        'priorite' => [
-            'required',
-            Rule::in([
-                'NORMAL',
-                'URGENT',
-                'TRES_URGENT',
-            ]),
-        ],
+                $nomOriginal = $file->getClientOriginalName();
 
-        'observations' => [
-            'nullable',
-            'string',
-        ],
-    ]);
+                $extension = strtolower(
+                    $file->getClientOriginalExtension()
+                );
 
-    $donneesAvant = $courrier->toArray();
+                $typeMime = $file->getMimeType();
 
-    $courrier->update($validated);
+                $taille = $file->getSize();
 
-    $donneesApres = $courrier->fresh()->toArray();
+                /*
+                |--------------------------------------------------------------------------
+                | SHA-256
+                |--------------------------------------------------------------------------
+                */
+                $checksumSha256 = hash_file(
+                    'sha256',
+                    $file->getRealPath()
+                );
 
-    JournalActiviteService::enregistrer(
-        'UPDATE',
-        'courriers_arrives',
-        $courrier->num_enreg_courr_arr,
-        $courrier->reference,
-        $donneesAvant,
-        $donneesApres
-    );  
+                /*
+                |--------------------------------------------------------------------------
+                | Vérifier si le même document existe déjà
+                |--------------------------------------------------------------------------
+                */
+                $documentExistant = DocumentNumerique::where(
+                    'checksum_sha256',
+                    $checksumSha256
+                )->first();
 
-    $courrier->load([
-    'pieceSuite',
-    'classement',
-    'utilisateurCreation',
-    'documents',
-    ]);
+                if ($documentExistant) {
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Vérifier si déjà associé à ce courrier
+                    |--------------------------------------------------------------------------
+                    */
+                    $dejaAssocie = $courrier->documents()
+                        ->where(
+                            'documents_numeriques.num_doc',
+                            $documentExistant->num_doc
+                        )
+                        ->exists();
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Courrier arrivé modifié avec succès.',
-        'data' => $courrier,
-    ]); 
+                    if (!$dejaAssocie) {
+
+                        $courrier->documents()->attach(
+                            $documentExistant->num_doc
+                        );
+
+                        $documentsAjoutes[] = $documentExistant;
+
+                        JournalActiviteService::enregistrer(
+                            'ATTACH',
+                            'documents_courriers_arrives',
+                            $courrier->num_enreg_courr_arr,
+                            'ORD-' . $courrier->num_enreg_courr_arr,
+                            null,
+                            [
+                                'num_doc' => $documentExistant->num_doc,
+                            ]
+                        );
+                    }
+
+                    continue;
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Nouveau nom physique
+                |--------------------------------------------------------------------------
+                */
+                $nomStockage = Str::uuid()->toString()
+                    . '.'
+                    . $extension;
+
+                $dossier = 'documents/courriers-arrives/'
+                    . $courrier->num_enreg_courr_arr;
+
+                $chemin = $dossier . '/' . $nomStockage;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Stockage
+                |--------------------------------------------------------------------------
+                */
+                Storage::disk('public')->putFileAs(
+                    $dossier,
+                    $file,
+                    $nomStockage
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Création document
+                |--------------------------------------------------------------------------
+                */
+                $document = DocumentNumerique::create([
+                    'nom_original' => $nomOriginal,
+                    'nom_stockage' => $nomStockage,
+                    'extension' => $extension,
+                    'type_mime' => $typeMime,
+                    'taille' => $taille,
+                    'chemin' => $chemin,
+                    'checksum_sha256' => $checksumSha256,
+                    'id_utilisateur_upload' => Auth::id(),
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | Association
+                |--------------------------------------------------------------------------
+                */
+                $courrier->documents()->attach(
+                    $document->num_doc
+                );
+
+                $documentsAjoutes[] = $document;
+
+                /*
+                |--------------------------------------------------------------------------
+                | Journalisation
+                |--------------------------------------------------------------------------
+                */
+                JournalActiviteService::enregistrer(
+                    'ADD_DOCUMENT',
+                    'documents_courriers_arrives',
+                    $courrier->num_enreg_courr_arr,
+                    'ORD-' . $courrier->num_enreg_courr_arr,
+                    null,
+                    [
+                        'num_doc' => $document->num_doc,
+                        'nom_original' => $document->nom_original,
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Documents ajoutés au courrier arrivé avec succès.',
+                'data' => $documentsAjoutes,
+            ], 201);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l’ajout des documents.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    public function destroy(int $courriers_arrife)
+/**
+ * ============================================================
+ * STATISTIQUES DES COURRIERS ARRIVÉS
+ * ============================================================
+ */
+    public function statistiques()
     {
-    $courrier = CourrierArrive::findOrFail($courriers_arrife);
+    try {
+        $total = CourrierArrive::count();
 
-    // 1. Maka ny données alohan'ny suppression
-    $donneesAvant = $courrier->toArray();
+        $tresUrgent = CourrierArrive::where(
+            'priorite',
+            'TRES_URGENT'
+        )->count();
 
-    // 2. Tehirizina aloha ny informations ilaina amin'ny journal
-    $idEnregistrement = $courrier->num_enreg_courr_arr;
-    $reference = $courrier->reference;
+        $urgent = CourrierArrive::where(
+            'priorite',
+            'URGENT'
+        )->count();
 
-    // 3. Mamafa ilay courrier
-    $courrier->delete();
+        $archives = CourrierArrive::where(
+            'statut_dossier',
+            'Archivé'
+        )->count();
 
-    // 4. Manoratra ny opération DELETE ao amin'ny journal
-    JournalActiviteService::enregistrer(
-        'DELETE',
-        'courriers_arrives',
-        $idEnregistrement,
-        $reference,
-        $donneesAvant,
-        null
-    );
+        return response()->json([
+            'success' => true,
+            'message' => 'Statistiques des courriers arrivés récupérées avec succès.',
+            'data' => [
+                'total' => $total,
+                'tres_urgent' => $tresUrgent,
+                'urgent' => $urgent,
+                'archives' => $archives,
+            ],
+        ]);
 
-    // 5. Retour API
-    return response()->json([
-        'success' => true,
-        'message' => 'Courrier arrivé supprimé avec succès.',
-    ]);
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors du chargement des statistiques.',
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+    }
+
+
+    /**
+     * ============================================================
+     * SUPPRIMER / ARCHIVER LE COURRIER
+     * ============================================================
+     */
+    public function destroy(int $id)
+    {
+        $courrier = CourrierArrive::find($id);
+
+        if (!$courrier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Courrier arrivé introuvable.',
+            ], 404);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Données avant suppression
+        |--------------------------------------------------------------------------
+        */
+        $donneesAvant = $courrier->toArray();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Soft delete
+        |--------------------------------------------------------------------------
+        */
+        $courrier->delete();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Journalisation DELETE
+        |--------------------------------------------------------------------------
+        */
+        JournalActiviteService::enregistrer(
+            'DELETE',
+            'courriers_arrives',
+            $courrier->num_enreg_courr_arr,
+            'ORD-' . $courrier->num_enreg_courr_arr,
+            $donneesAvant,
+            null
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Courrier arrivé supprimé avec succès.',
+        ]);
     }
 }

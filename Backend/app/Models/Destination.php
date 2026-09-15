@@ -15,9 +15,6 @@ class Destination extends Model
 
     protected $keyType = 'int';
 
-    const CREATED_AT = 'created_at';
-    const UPDATED_AT = 'updated_at';
-
     protected $fillable = [
         'lib_officiel_desti',
         'actif',
@@ -30,6 +27,9 @@ class Destination extends Model
         ];
     }
 
+    /**
+     * Courriers départ associés à cette destination.
+     */
     public function courriersDepart(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -37,6 +37,6 @@ class Destination extends Model
             'destiner',
             'id_desti',
             'num_ordre_dep'
-        );
+        )->withTimestamps();
     }
 }
