@@ -40,6 +40,54 @@ class DocumentCourrierArriveController extends Controller
     }
 
     /**
+     * Afficher un document associé à un courrier arrivé.
+     */
+    public function view(int $id, int $numDoc)
+    {
+        $courrier = CourrierArrive::find($id);
+
+        if (!$courrier) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Courrier arrivé introuvable.',
+            ], 404);
+        }
+
+        $document = $courrier
+            ->documents()
+            ->where(
+                'documents_numeriques.num_doc',
+                $numDoc
+            )
+            ->first();
+
+        if (!$document) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Document non associé à ce courrier.',
+            ], 404);
+        }
+
+        if (!Storage::disk('public')->exists($document->chemin)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Fichier physique introuvable.',
+            ], 404);
+        }
+
+        $filePath = Storage::disk('public')->path(
+            $document->chemin
+        );
+
+        return response()->file($filePath, [
+            'Content-Type' => $document->type_mime
+                ?: 'application/octet-stream',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    /**
      * Upload et association d'un document à un courrier arrivé.
      */
     public function store(Request $request, int $id)

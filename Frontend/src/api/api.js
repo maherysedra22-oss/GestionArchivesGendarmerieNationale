@@ -118,6 +118,17 @@ const put = (endpoint, body = {}) => {
 }
 
 // ======================================================
+// PATCH
+// ======================================================
+
+const patch = (endpoint, body = {}) => {
+  return request(endpoint, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  })
+}
+
+// ======================================================
 // DELETE
 // ======================================================
 
@@ -146,6 +157,7 @@ export default {
   get,
   post,
   put,
+  patch,
   delete: remove,
   upload,
 }

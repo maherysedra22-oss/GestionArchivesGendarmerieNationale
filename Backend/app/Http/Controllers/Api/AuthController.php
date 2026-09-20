@@ -21,7 +21,10 @@ class AuthController extends Controller
         ]);
 
         // Recherche de l'utilisateur par email
-        $utilisateur = Utilisateur::where(
+        $utilisateur = Utilisateur::with([
+            'role.permissions',
+            'grade'
+        ])->where(
             'email',
             $request->email
         )->first();
@@ -63,7 +66,9 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Connexion réussie.',
+
             'token' => $token,
+
             'token_type' => 'Bearer',
 
             'doit_changer_mdp' =>
@@ -71,19 +76,63 @@ class AuthController extends Controller
 
             'utilisateur' => [
                 'id_utilisateur' => $utilisateur->id_utilisateur,
+
                 'matricule' => $utilisateur->matricule,
+
                 'nom' => $utilisateur->nom,
+
                 'prenom' => $utilisateur->prenom,
+
                 'poste_fonction' => $utilisateur->poste_fonction,
+
                 'email' => $utilisateur->email,
+
                 'statut' => $utilisateur->statut,
 
+                'doit_changer_mdp' =>
+                    $utilisateur->doit_changer_mdp,
+
                 'role' => $utilisateur->role
-                    ? $utilisateur->role->nom_role
+                    ? [
+                        'id_role' =>
+                            $utilisateur->role->id_role,
+
+                        'nom_role' =>
+                            $utilisateur->role->nom_role,
+
+                        'permissions' =>
+                            $utilisateur->role->permissions
+                                ->where('actif', true)
+                                ->map(function ($permission) {
+                                    return [
+                                        'id_permission' =>
+                                            $permission->id_permission,
+
+                                        'code_permission' =>
+                                            $permission->code_permission,
+
+                                        'nom_permission' =>
+                                            $permission->nom_permission,
+
+                                        'page' =>
+                                            $permission->page,
+
+                                        'action' =>
+                                            $permission->action,
+                                    ];
+                                })
+                                ->values(),
+                    ]
                     : null,
 
                 'grade' => $utilisateur->grade
-                    ? $utilisateur->grade->nom_grade
+                    ? [
+                        'id_grade' =>
+                            $utilisateur->grade->id_grade,
+
+                        'nom_grade' =>
+                            $utilisateur->grade->nom_grade,
+                    ]
                     : null,
             ],
         ], 200);
@@ -94,21 +143,20 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-    $user = $request->user();
+        $user = $request->user();
 
-    if ($user) {
-        $token = $user->currentAccessToken();
+        if ($user) {
+            $token = $user->currentAccessToken();
 
-        if ($token) {
-            $token->delete();
+            if ($token) {
+                $token->delete();
+            }
         }
-    }
 
-    return response()->json([
-        'message' => 'Déconnexion réussie.'
-    ], 200);
+        return response()->json([
+            'message' => 'Déconnexion réussie.'
+        ], 200);
     }
-
 
     /**
      * Informations de l'utilisateur connecté
@@ -117,23 +165,79 @@ class AuthController extends Controller
     {
         $utilisateur = $request->user();
 
+        // Charger les relations nécessaires
+        $utilisateur->load([
+            'role.permissions',
+            'grade'
+        ]);
+
         return response()->json([
             'utilisateur' => [
-                'id_utilisateur' => $utilisateur->id_utilisateur,
-                'matricule' => $utilisateur->matricule,
-                'nom' => $utilisateur->nom,
-                'prenom' => $utilisateur->prenom,
-                'poste_fonction' => $utilisateur->poste_fonction,
-                'email' => $utilisateur->email,
-                'statut' => $utilisateur->statut,
-                'doit_changer_mdp' => $utilisateur->doit_changer_mdp,
+                'id_utilisateur' =>
+                    $utilisateur->id_utilisateur,
+
+                'matricule' =>
+                    $utilisateur->matricule,
+
+                'nom' =>
+                    $utilisateur->nom,
+
+                'prenom' =>
+                    $utilisateur->prenom,
+
+                'poste_fonction' =>
+                    $utilisateur->poste_fonction,
+
+                'email' =>
+                    $utilisateur->email,
+
+                'statut' =>
+                    $utilisateur->statut,
+
+                'doit_changer_mdp' =>
+                    $utilisateur->doit_changer_mdp,
 
                 'role' => $utilisateur->role
-                    ? $utilisateur->role->nom_role
+                    ? [
+                        'id_role' =>
+                            $utilisateur->role->id_role,
+
+                        'nom_role' =>
+                            $utilisateur->role->nom_role,
+
+                        'permissions' =>
+                            $utilisateur->role->permissions
+                                ->where('actif', true)
+                                ->map(function ($permission) {
+                                    return [
+                                        'id_permission' =>
+                                            $permission->id_permission,
+
+                                        'code_permission' =>
+                                            $permission->code_permission,
+
+                                        'nom_permission' =>
+                                            $permission->nom_permission,
+
+                                        'page' =>
+                                            $permission->page,
+
+                                        'action' =>
+                                            $permission->action,
+                                    ];
+                                })
+                                ->values(),
+                    ]
                     : null,
 
                 'grade' => $utilisateur->grade
-                    ? $utilisateur->grade->nom_grade
+                    ? [
+                        'id_grade' =>
+                            $utilisateur->grade->id_grade,
+
+                        'nom_grade' =>
+                            $utilisateur->grade->nom_grade,
+                    ]
                     : null,
             ],
         ], 200);

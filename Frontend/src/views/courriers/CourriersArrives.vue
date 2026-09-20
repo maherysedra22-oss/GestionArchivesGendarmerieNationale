@@ -16,6 +16,7 @@
       </div>
 
       <button
+        v-if="canCreateCourriers"
         type="button"
         class="btn btn-primary btn-new"
         @click="openCreateModal"
@@ -329,6 +330,7 @@
               <!-- Documents -->
               <td>
                 <button
+                  v-if="canViewCourriers"
                   type="button"
                   class="documents-count"
                   @click="openDetailModal(courrier)"
@@ -343,6 +345,7 @@
               <td>
                 <div class="action-buttons">
                   <button
+                    v-if="canViewCourriers"
                     type="button"
                     class="icon-button view"
                     title="Voir le courrier"
@@ -353,6 +356,7 @@
                   </button>
 
                   <button
+                    v-if="canUpdateCourriers"
                     type="button"
                     class="icon-button edit"
                     title="Modifier le courrier"
@@ -363,6 +367,7 @@
                   </button>
 
                   <button
+                    v-if="canDeleteCourriers"
                     type="button"
                     class="icon-button delete"
                     title="Supprimer le courrier"
@@ -439,6 +444,7 @@
               </span>
 
               <button
+                v-if="canViewCourriers"
                 type="button"
                 class="documents-count"
                 @click="openDetailModal(courrier)"
@@ -450,6 +456,7 @@
 
           <div class="mobile-card-actions">
             <button
+              v-if="canViewCourriers"
               type="button"
               class="btn btn-outline btn-small"
               @click="openDetailModal(courrier)"
@@ -459,6 +466,7 @@
             </button>
 
             <button
+              v-if="canUpdateCourriers"
               type="button"
               class="btn btn-outline btn-small"
               @click="openEditModal(courrier)"
@@ -468,6 +476,7 @@
             </button>
 
             <button
+              v-if="canDeleteCourriers"
               type="button"
               class="btn btn-danger-light btn-small"
               @click="askDeleteCourrier(courrier)"
@@ -493,6 +502,7 @@
         </p>
 
         <button
+          v-if="canCreateCourriers"
           type="button"
           class="btn btn-primary"
           @click="openCreateModal"
@@ -718,6 +728,7 @@
                 </select>
 
                 <button
+                  v-if="canCreateCourriers"
                   type="button"
                   class="btn btn-add-piece"
                   @click="openPieceModal"
@@ -1002,6 +1013,7 @@
 
             <!-- Dropzone -->
             <div
+              v-if="canCreateCourriers"
               class="dropzone"
               :class="{ dragging: isDragging }"
               @dragenter.prevent="isDragging = true"
@@ -1412,6 +1424,7 @@
                 <!-- ACTION -->
 
                 <button
+                  v-if="canDeleteCourriers"
                   type="button"
                   class="btn-delete-piece"
                   @click="openDeletePieceModal(piece)"
@@ -1748,6 +1761,7 @@
               </div>
 
               <button
+                v-if="canCreateCourriers"
                 type="button"
                 class="btn btn-primary btn-small"
                 @click="addDocumentsToCurrent"
@@ -1805,34 +1819,36 @@
 
                 <div class="document-actions">
                   <button
-                      v-if="canPreview(document)"
+                      v-if="canViewDocuments"
                       type="button"
                       class="icon-button view"
                       title="Afficher le document"
                       aria-label="Afficher le document"
                       @click="previewDocument(document)"
                   >
-                    👁
+                    <Eye :size="17" />
                   </button>
 
                   <button
+                    v-if="canDownloadDocuments"
                     type="button"
                     class="icon-button download"
                     title="Télécharger"
                     aria-label="Télécharger le document"
                     @click="downloadDocument(document)"
                   >
-                    ⇩
+                    <Download :size="16" />
                   </button>
 
                   <button
+                    v-if="canDeleteCourriers"
                     type="button"
                     class="icon-button delete"
                     title="Supprimer"
                     aria-label="Supprimer le document"
                     @click="askDeleteDocument(document)"
                   >
-                    🗑
+                    <Trash2 :size="17" />
                   </button>
                 </div>
               </div>
@@ -1863,6 +1879,7 @@
             </button>
 
             <button
+              v-if="canUpdateCourriers"
               type="button"
               class="btn btn-primary"
               @click="editFromDetail"
@@ -2115,6 +2132,7 @@
 
             <!-- Télécharger -->
             <button
+              v-if="canDownloadDocuments"
               type="button"
               class="btn btn-primary"
               :disabled="!previewDocumentData"
@@ -2130,6 +2148,7 @@
 
             <!-- Supprimer -->
             <button
+              v-if="canDeleteCourriers"
               type="button"
               class="btn btn-danger"
               :disabled="!previewDocumentData"
@@ -2293,6 +2312,7 @@ import {
   reactive,
   ref,
 } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 
 /* ================================================================
    CONFIGURATION API
@@ -2361,7 +2381,7 @@ async function apiFetch(path, options = {}) {
             'Content-Type': 'application/json',
           },
     ),
-    ...(fetchOptions.headers || {}),
+    ...fetchOptions.headers,
   }
 
   const response = await fetch(
@@ -2371,6 +2391,19 @@ async function apiFetch(path, options = {}) {
       headers,
     },
   )
+
+  if (response.status === 401) {
+    localStorage.removeItem('auth_token')
+    sessionStorage.removeItem('auth_token')
+    localStorage.removeItem('utilisateur')
+    sessionStorage.removeItem('utilisateur')
+
+    window.location.href = '/login'
+
+    throw new Error(
+      'Session expirée ou token invalide.'
+    )
+  }
 
   let payload = null
 
@@ -2574,6 +2607,32 @@ const currentUserName = computed(() => {
 
   return 'Utilisateur connecté'
 })
+
+const authStore = useAuthStore()
+
+const canViewCourriers = computed(() =>
+  authStore.hasPermission('courriers_arrives.view')
+)
+
+const canCreateCourriers = computed(() =>
+  authStore.hasPermission('courriers_arrives.create')
+)
+
+const canUpdateCourriers = computed(() =>
+  authStore.hasPermission('courriers_arrives.update')
+)
+
+const canDeleteCourriers = computed(() =>
+  authStore.hasPermission('courriers_arrives.delete')
+)
+
+const canViewDocuments = computed(() =>
+  authStore.hasPermission('documents.view')
+)
+
+const canDownloadDocuments = computed(() =>
+  authStore.hasPermission('documents.download')
+)
 
 const currentUserInitials = computed(() => {
   const name = currentUserName.value
@@ -3229,12 +3288,9 @@ function openEditModal(courrier) {
 }
 
 function closeFormModal() {
-  if (saving.value) {
-    return
-  }
-
   showFormModal.value = false
   resetForm()
+  isEditing.value = false
 }
 
 /* ================================================================
@@ -3343,38 +3399,30 @@ function validateForm() {
    SAVE COURRIER
 ================================================================ */
 
+
 async function saveCourrier() {
   if (!validateForm()) {
     return
   }
+
+  const wasEditing = isEditing.value
 
   saving.value = true
   formError.value = ''
 
   try {
     const body = {
-      num_ordre_orig:
-        form.num_ordre_orig.trim(),
-
-      lib_orig:
-        form.lib_orig.trim(),
-
-      objet_courr_arri:
-        form.objet_courr_arri.trim(),
-
-      id_piece_suit:
-        form.id_piece_suit,
-
-      priorite:
-        form.priorite,
-
-      statut_dossier:
-        form.statut_dossier,
+      num_ordre_orig: form.num_ordre_orig.trim(),
+      lib_orig: form.lib_orig.trim(),
+      objet_courr_arri: form.objet_courr_arri.trim(),
+      id_piece_suit: form.id_piece_suit,
+      priorite: form.priorite,
+      statut_dossier: form.statut_dossier,
     }
 
     let response
 
-    if (isEditing.value) {
+    if (wasEditing) {
       response = await apiFetch(
         `${COURRIERS_ENDPOINT}/${form.num_enreg_courr_arr}`,
         {
@@ -3392,94 +3440,59 @@ async function saveCourrier() {
       )
     }
 
-    const createdOrUpdated =
-      extractObject(response)
+    const createdOrUpdated = extractObject(response)
 
-    /**
-     * Pour une création :
-     * le numéro est généré par le backend.
-     */
     const courrierId =
       createdOrUpdated?.num_enreg_courr_arr ??
       form.num_enreg_courr_arr
 
-    /**
-     * Les documents sont envoyés après
-     * l'enregistrement du courrier.
-     */
-    if (
-      courrierId &&
-      selectedFiles.value.length > 0
-    ) {
+    const newFiles = selectedFiles.value
+      .filter((item) => item.file instanceof File)
+      .map((item) => item.file)
+
+    if (courrierId && newFiles.length > 0) {
       await uploadDocuments(
         courrierId,
-        selectedFiles.value.map(
-          (item) => item.file,
-        ),
+        newFiles,
       )
     }
 
+    // ✅ Fermer automatiquement après succès
     closeFormModal()
 
+    // ✅ Actualiser le tableau
     await loadCourriers(
-      isEditing.value
+      wasEditing
         ? pagination.currentPage
         : 1,
     )
 
     showToast(
       'success',
-      isEditing.value
+      wasEditing
         ? 'Courrier modifié'
         : 'Courrier enregistré',
-      isEditing.value
+      wasEditing
         ? 'Les informations du courrier ont été modifiées avec succès.'
         : 'Le nouveau courrier a été enregistré avec succès.',
     )
+
   } catch (error) {
     console.error(
       'Erreur sauvegarde courrier:',
       error,
     )
 
+    // ❌ Raha erreur dia mijanona misokatra ny formulaire
     formError.value =
       extractApiValidationMessage(error) ||
       error.message ||
       "Impossible d'enregistrer le courrier."
+
   } finally {
     saving.value = false
   }
 }
-
-/* ================================================================
-   EXTRAIRE ERREUR VALIDATION
-================================================================ */
-
-function extractApiValidationMessage(error) {
-  const validationErrors =
-    error?.payload?.errors
-
-  if (!validationErrors) {
-    return ''
-  }
-
-  const firstKey =
-    Object.keys(validationErrors)[0]
-
-  if (!firstKey) {
-    return ''
-  }
-
-  const messages =
-    validationErrors[firstKey]
-
-  if (Array.isArray(messages)) {
-    return messages[0] || ''
-  }
-
-  return String(messages || '')
-}
-
 /* ================================================================
    SUPPRESSION COURRIER
 ================================================================ */
@@ -3734,64 +3747,32 @@ function removeSelectedFile(index) {
    DOCUMENTS : UPLOAD
 ================================================================ */
 
-async function uploadDocuments(
-  courrierId,
-  files,
-) {
-  if (!files.length) {
+
+async function uploadDocuments(courrierId, files) {
+  if (!courrierId || !files?.length) {
     return
   }
 
   for (const file of files) {
-    const formData =
-      new FormData()
-
-    /**
-     * Endpoint prévu :
-     * POST /courriers-arrives/{id}/documents
-     *
-     * Le champ utilisé ici est "document".
-     */
-    formData.append(
-      'document',
-      file,
-    )
-
-    try {
-      await apiFetch(
-        `${COURRIERS_ENDPOINT}/${courrierId}/documents`,
-        {
-          method: 'POST',
-          body: formData,
-          isFormData: true,
-        },
-      )
-    } catch (error) {
-      /**
-       * Certains backends utilisent documents[].
-       * On effectue une deuxième tentative uniquement
-       * lorsque la première requête échoue.
-       */
-      const retryFormData =
-        new FormData()
-
-      retryFormData.append(
-        'documents[]',
-        file,
-      )
-
-      await apiFetch(
-        `${COURRIERS_ENDPOINT}/${courrierId}/documents`,
-        {
-          method: 'POST',
-          body: retryFormData,
-          isFormData: true,
-        },
-      )
+    if (!(file instanceof File)) {
+      continue
     }
+
+    const formData = new FormData()
+
+    // Champ unique : document
+    formData.append('document', file)
+
+    await apiFetch(
+      `${COURRIERS_ENDPOINT}/${courrierId}/documents`,
+      {
+        method: 'POST',
+        body: formData,
+        isFormData: true,
+      },
+    )
   }
 }
-
 /* ================================================================
    AJOUTER DOCUMENTS DEPUIS DÉTAIL
 ================================================================ */
@@ -3815,13 +3796,7 @@ function addDocumentsToCurrent() {
 ================================================================ */
 
 function documentId(doc) {
-  return (
-    doc?.num_doc ??
-    doc?.id_document ??
-    doc?.id ??
-    doc?.id_doc ??
-    null
-  )
+  return doc?.num_doc ?? null
 }
 
 function documentName(doc) {
@@ -3881,6 +3856,12 @@ function canPreview(document) {
 
 async function previewDocument(doc) {
   try {
+    if (!canViewDocuments.value) {
+      throw new Error(
+        "Vous n'avez pas l'autorisation d'afficher ce document."
+      )
+    }
+
     if (!selectedCourrier.value) {
       throw new Error(
         'Aucun courrier sélectionné.'
@@ -3890,8 +3871,7 @@ async function previewDocument(doc) {
     const courrierId =
       selectedCourrier.value.num_enreg_courr_arr
 
-    const numDoc =
-      documentId(doc)
+    const numDoc = documentId(doc)
 
     if (!courrierId) {
       throw new Error(
@@ -3913,13 +3893,32 @@ async function previewDocument(doc) {
     loadingPreview.value = true
 
     const response = await fetch(
-      `${API_URL}${COURRIERS_ENDPOINT}/${courrierId}/documents/${numDoc}/download`,
+      `${API_URL}${COURRIERS_ENDPOINT}/${courrierId}/documents/${numDoc}/view`,
       {
         method: 'GET',
         headers: authHeaders(),
       }
     )
 
+    // ------------------------------------------------------------
+    // SESSION EXPIREE
+    // ------------------------------------------------------------
+    if (response.status === 401) {
+      localStorage.removeItem('auth_token')
+      sessionStorage.removeItem('auth_token')
+      localStorage.removeItem('utilisateur')
+      sessionStorage.removeItem('utilisateur')
+
+      window.location.href = '/login'
+
+      throw new Error(
+        'Session expirée ou token invalide.'
+      )
+    }
+
+    // ------------------------------------------------------------
+    // ERREUR API
+    // ------------------------------------------------------------
     if (!response.ok) {
       let message =
         "Impossible d'afficher le document."
@@ -3932,53 +3931,107 @@ async function previewDocument(doc) {
           payload?.message ||
           message
       } catch {
-        // La réponse peut être un fichier
+        // La réponse n'est pas du JSON
       }
 
       throw new Error(message)
     }
 
-    const blob =
-      await response.blob()
+    // ------------------------------------------------------------
+    // RECUPERATION DU FICHIER
+    // ------------------------------------------------------------
+    const blob = await response.blob()
 
-    /*
-     * Libérer l'ancienne URL
-     */
+    console.log('📄 Preview document')
+    console.log('➡️ Content-Type API :', response.headers.get('content-type'))
+    console.log('➡️ Blob type :', blob.type)
+    console.log('➡️ Blob size :', blob.size)
+
+    if (!blob.size) {
+      throw new Error(
+        'Le document reçu est vide.'
+      )
+    }
+
+    // ------------------------------------------------------------
+    // DETERMINER LE MIME TYPE
+    // ------------------------------------------------------------
+    let mimeType =
+      response.headers.get('content-type') ||
+      blob.type ||
+      ''
+
+    // Éviter les erreurs si Laravel retourne octet-stream
+    if (
+      !mimeType ||
+      mimeType === 'application/octet-stream'
+    ) {
+      const extension =
+        getExtension(documentName(doc))
+
+      const mimeTypes = {
+        pdf: 'application/pdf',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+      }
+
+      mimeType =
+        mimeTypes[extension] ||
+        'application/octet-stream'
+    }
+
+    // ------------------------------------------------------------
+    // RECREER LE BLOB AVEC LE BON MIME TYPE
+    // ------------------------------------------------------------
+    const previewBlob =
+      new Blob(
+        [blob],
+        {
+          type: mimeType,
+        }
+      )
+
+    // Libérer l'ancienne URL
     if (previewDocumentUrl.value) {
       URL.revokeObjectURL(
         previewDocumentUrl.value
       )
     }
 
-    /*
-     * Créer l'URL temporaire
-     */
+    // Créer nouvelle URL
     previewDocumentUrl.value =
-      URL.createObjectURL(blob)
+      URL.createObjectURL(
+        previewBlob
+      )
 
-    /*
-     * Conserver les informations
-     * du document actuellement affiché
-     */
+    // Informations document
     previewDocumentData.value = {
       ...doc,
       num_doc: numDoc,
       nom_original:
         documentName(doc),
-      type_mime:
-        doc?.type_mime ||
-        blob.type ||
-        '',
+      type_mime: mimeType,
+      taille:
+        documentSize(doc),
     }
 
-    /*
-     * Ouvrir la fenêtre modale
-     */
+    console.log(
+      '✅ URL preview :',
+      previewDocumentUrl.value
+    )
+
+    console.log(
+      '✅ MIME final :',
+      mimeType
+    )
+
+    // Ouvrir modal
     showDocumentPreview.value = true
 
   } catch (error) {
     console.error(
-      'Erreur affichage document :',
+      '❌ Erreur affichage document :',
       error
     )
 
@@ -3988,13 +4041,10 @@ async function previewDocument(doc) {
       error.message ||
         "Impossible d'afficher le document."
     )
-
   } finally {
     loadingPreview.value = false
   }
 }
-
-
 function closeDocumentPreview() {
   // Fermer la fenêtre de prévisualisation
   showDocumentPreview.value = false
@@ -4126,9 +4176,15 @@ async function deletePreviewDocument(doc) {
 
 async function downloadDocument(doc) {
   try {
+    if (!canDownloadDocuments.value) {
+      throw new Error(
+        "Vous n'avez pas l'autorisation de télécharger ce document."
+      )
+    }
+
     if (!selectedCourrier.value) {
       throw new Error(
-        'Aucun courrier sélectionné.',
+        'Aucun courrier sélectionné.'
       )
     }
 
@@ -4138,14 +4194,20 @@ async function downloadDocument(doc) {
     const numDoc =
       documentId(doc)
 
+    if (!courrierId) {
+      throw new Error(
+        'Identifiant du courrier introuvable.'
+      )
+    }
+
     if (!numDoc) {
       console.error(
         'Document sans num_doc:',
-        doc,
+        doc
       )
 
       throw new Error(
-        'Identifiant du document introuvable.',
+        'Identifiant du document introuvable.'
       )
     }
 
@@ -4154,7 +4216,7 @@ async function downloadDocument(doc) {
       {
         method: 'GET',
         headers: authHeaders(),
-      },
+      }
     )
 
     if (!response.ok) {
@@ -4168,6 +4230,7 @@ async function downloadDocument(doc) {
         message =
           payload?.message ||
           message
+
       } catch {
         // La réponse peut être un fichier
       }
@@ -4185,18 +4248,16 @@ async function downloadDocument(doc) {
       window.document.createElement('a')
 
     link.href = url
-
     link.download =
       documentName(doc)
 
     link.style.display = 'none'
 
     window.document.body.appendChild(
-      link,
+      link
     )
 
     link.click()
-
     link.remove()
 
     setTimeout(() => {
@@ -4206,22 +4267,26 @@ async function downloadDocument(doc) {
     showToast(
       'success',
       'Téléchargement',
-      'Le document a été téléchargé avec succès.',
+      'Le document a été téléchargé avec succès.'
     )
+
   } catch (error) {
     console.error(
       'Erreur téléchargement document:',
-      error,
+      error
     )
 
     showToast(
       'error',
       'Téléchargement',
       error.message ||
-        'Impossible de télécharger le document.',
+        'Impossible de télécharger le document.'
     )
   }
 }
+
+
+
  /* ================================================================
     DOCUMENT : SUPPRESSION
  ================================================================= */
@@ -4772,16 +4837,12 @@ function handleEscape(event) {
 ================================================================ */
 
 onMounted(async () => {
-  document.addEventListener(
-    'keydown',
-    handleEscape,
-  )
+  await authStore.loadCurrentUser()
 
-  await Promise.all([
-    loadCurrentUser(),
-    loadPiecesSuite(),
-    loadCourriers(1),
-  ])
+  currentUser.value = authStore.utilisateur
+
+  await loadPiecesSuite()
+  await loadCourriers()
 })
 
 /* ================================================================

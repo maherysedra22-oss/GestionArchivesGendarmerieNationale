@@ -392,8 +392,8 @@
               <!-- ACTIONS -->
               <td>
                 <div class="actions">
-
                   <button
+                    v-if="canView"
                     type="button"
                     class="icon-btn view"
                     title="Voir les détails"
@@ -737,6 +737,7 @@
                     </div>
 
                     <button
+                      v-if="canUpdate || !editingRole"
                       type="button"
                       class="select-group-btn"
                       :disabled="saving"
@@ -1384,6 +1385,7 @@ import {
 } from 'vue'
 
 import api from '@/api/api'
+import { useAuthStore } from '@/stores/auth'
 
 import {
   Shield,
@@ -1515,58 +1517,26 @@ const selectedPermissionIds = ref([])
 const permissionModalSelectedIds = ref([])
 
 /* ============================================================
-   CURRENT USER
+   CURRENT USER / PERMISSIONS
 ============================================================ */
 
-const currentUserPermissions = ref([])
+const authStore = useAuthStore()
 
-function getStoredUser() {
-  try {
-    const raw =
-      localStorage.getItem('utilisateur') ||
-      sessionStorage.getItem('utilisateur')
-
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
-}
-
-const currentUser = computed(() => getStoredUser())
-
-const currentUserRole = computed(() => {
-  const user = currentUser.value
-
-  return (
-    user?.role?.nom_role ||
-    user?.role?.name ||
-    (typeof user?.role === 'string'
-      ? user.role
-      : null)
-  )
+const canView = computed(() => {
+  return authStore.hasPermission('roles.view')
 })
 
 const canCreate = computed(() => {
-  return (
-    currentUserRole.value === 'Administrateur' ||
-    currentUserPermissions.value.includes('roles.create')
-  )
+  return authStore.hasPermission('roles.create')
 })
 
 const canUpdate = computed(() => {
-  return (
-    currentUserRole.value === 'Administrateur' ||
-    currentUserPermissions.value.includes('roles.update')
-  )
+  return authStore.hasPermission('roles.update')
 })
 
 const canDelete = computed(() => {
-  return (
-    currentUserRole.value === 'Administrateur' ||
-    currentUserPermissions.value.includes('roles.delete')
-  )
+  return authStore.hasPermission('roles.delete')
 })
-
 /* ============================================================
    STATISTICS
 ============================================================ */
@@ -1609,7 +1579,7 @@ const filteredRoles = computed(() => {
       ) ||
       (
         statusFilter.value === 'inactive' &&
-        !Boolean(role.actif)
+        !role.actif
       )
 
     const matchesType =
@@ -1620,7 +1590,7 @@ const filteredRoles = computed(() => {
       ) ||
       (
         typeFilter.value === 'custom' &&
-        !Boolean(role.systeme)
+        !role.systeme
       )
 
     return (
@@ -2240,7 +2210,7 @@ async function toggleRoleStatus(role) {
   }
 
   const nextStatus =
-    !Boolean(role.actif)
+    !role.actif
 
   statusUpdatingId.value =
     role.id_role
@@ -2876,6 +2846,7 @@ onMounted(async () => {
 
 })
 </script>
+
 
 <style scoped>
 /* ============================================================

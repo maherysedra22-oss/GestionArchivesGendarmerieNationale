@@ -66,8 +66,20 @@ const handleLogin = async () => {
       remember.value
     )
 
+    console.log('LOGIN USER:', data.utilisateur)
+    console.log(
+      'DOIT CHANGER:',
+      data.utilisateur?.doit_changer_mdp,
+      typeof data.utilisateur?.doit_changer_mdp
+    )
+
     // Vérifier si l'utilisateur doit changer son mot de passe
-    if (data.utilisateur?.doit_changer_mdp) {
+    const doitChangerMotDePasse =
+      data.utilisateur?.doit_changer_mdp === true ||
+      data.utilisateur?.doit_changer_mdp === 1 ||
+      data.utilisateur?.doit_changer_mdp === '1'
+
+    if (doitChangerMotDePasse) {
       router.push('/change-password')
     } else {
       router.push('/dashboard')

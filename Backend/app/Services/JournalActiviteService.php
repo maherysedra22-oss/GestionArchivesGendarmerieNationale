@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\JournalActivite;
 use Illuminate\Support\Facades\Auth;
+use Throwable;
 
 class JournalActiviteService
 {
@@ -15,23 +16,29 @@ class JournalActiviteService
         ?array $donneesAvant = null,
         ?array $donneesApres = null
     ): void {
-        $utilisateur = Auth::user();
+        try {
+            $utilisateur = Auth::user();
 
-        JournalActivite::create([
-            'id_utilisateur' => $utilisateur?->id_utilisateur,
+            JournalActivite::create([
+                'id_utilisateur' => $utilisateur?->id_utilisateur,
 
-            'nom_utilisateur' => $utilisateur
-                ? trim($utilisateur->nom . ' ' . $utilisateur->prenom)
-                : null,
+                'nom_utilisateur' => $utilisateur
+                    ? trim(
+                        $utilisateur->nom . ' ' . $utilisateur->prenom
+                    )
+                    : null,
 
-            'action' => $action,
-            'table_concernee' => $tableConcernee,
-            'id_enregistrement' => $idEnregistrement,
-            'reference_objet' => $referenceObjet,
-            'donnees_avant' => $donneesAvant,
-            'donnees_apres' => $donneesApres,
-            'adresse_ip' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
+                'action' => $action,
+                'table_concernee' => $tableConcernee,
+                'id_enregistrement' => $idEnregistrement,
+                'reference_objet' => $referenceObjet,
+                'donnees_avant' => $donneesAvant,
+                'donnees_apres' => $donneesApres,
+                'adresse_ip' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 }

@@ -36,10 +36,25 @@ class DashboardController extends Controller
                 'priorite',
                 'TRES_URGENT'
             )->count();
+            
+            $courriersNormaux = CourrierArrive::where(
+                'priorite',
+                'NORMAL'
+            )->count();
 
             $courriersArchives = CourrierArrive::where(
                 'statut_dossier',
                 'Archivé'
+            )->count();
+            
+            $courriersEnCours = CourrierArrive::where(
+                'statut_dossier',
+                'En cours'
+            )->count();
+            
+            $courriersLecture = CourrierArrive::where(
+                'statut_dossier',
+                'Lecture'
             )->count();
 
 
@@ -102,6 +117,29 @@ class DashboardController extends Controller
 
             /*
             |--------------------------------------------------------------------------
+            | EVOLUTION DES COURRIERS (6 derniers mois)
+            |--------------------------------------------------------------------------
+            */
+            $months = [];
+            $arrivesData = [];
+            $departData = [];
+
+            for ($i = 5; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $monthLabel = $date->translatedFormat('M Y');
+                $months[] = ucfirst($monthLabel);
+                
+                $arrivesData[] = CourrierArrive::whereYear('created_at', $date->year)
+                                               ->whereMonth('created_at', $date->month)
+                                               ->count();
+                                               
+                $departData[] = CourrierDepart::whereYear('created_at', $date->year)
+                                              ->whereMonth('created_at', $date->month)
+                                              ->count();
+            }
+
+            /*
+            |--------------------------------------------------------------------------
             | RÉPONSE JSON
             |--------------------------------------------------------------------------
             */
@@ -120,6 +158,26 @@ class DashboardController extends Controller
                         'urgents' => $courriersUrgents,
                         'tres_urgents' => $courriersTresUrgents,
                         'archives' => $courriersArchives,
+                        'en_cours' => $courriersEnCours,
+                        'lecture' => $courriersLecture,
+                    ],
+
+                    'statuts' => [
+                        'en_cours' => $courriersEnCours,
+                        'lecture' => $courriersLecture,
+                        'archives' => $courriersArchives,
+                    ],
+
+                    'priorites' => [
+                        'normal' => $courriersNormaux,
+                        'urgent' => $courriersUrgents,
+                        'tres_urgent' => $courriersTresUrgents,
+                    ],
+
+                    'evolution' => [
+                        'labels' => $months,
+                        'arrives' => $arrivesData,
+                        'depart' => $departData,
                     ],
 
                     'activites' => $activites,

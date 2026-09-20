@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Utilisateur;
-use App\Models\Role;
 use App\Models\GradeMilitaire;
+use App\Models\Role;
+use App\Models\Utilisateur;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,8 +42,8 @@ class UtilisateurController extends Controller
                     'updated_at',
                 ]);
 
-            /*
-             * Recherche globale
+            /**
+             * Recherche globale.
              */
             if ($request->filled('search')) {
                 $search = trim($request->input('search'));
@@ -53,12 +53,16 @@ class UtilisateurController extends Controller
                         ->orWhere('nom', 'ILIKE', "%{$search}%")
                         ->orWhere('prenom', 'ILIKE', "%{$search}%")
                         ->orWhere('email', 'ILIKE', "%{$search}%")
-                        ->orWhere('poste_fonction', 'ILIKE', "%{$search}%");
+                        ->orWhere(
+                            'poste_fonction',
+                            'ILIKE',
+                            "%{$search}%"
+                        );
                 });
             }
 
-            /*
-             * Filtre rôle
+            /**
+             * Filtre rôle.
              */
             if ($request->filled('id_role')) {
                 $query->where(
@@ -67,8 +71,8 @@ class UtilisateurController extends Controller
                 );
             }
 
-            /*
-             * Filtre grade
+            /**
+             * Filtre grade.
              */
             if ($request->filled('id_grade')) {
                 $query->where(
@@ -77,10 +81,13 @@ class UtilisateurController extends Controller
                 );
             }
 
-            /*
-             * Filtre statut
+            /**
+             * Filtre statut.
              */
-            if ($request->has('statut') && $request->input('statut') !== '') {
+            if (
+                $request->has('statut') &&
+                $request->input('statut') !== ''
+            ) {
                 $statut = filter_var(
                     $request->input('statut'),
                     FILTER_VALIDATE_BOOLEAN,
@@ -92,8 +99,8 @@ class UtilisateurController extends Controller
                 }
             }
 
-            /*
-             * Filtre changement mot de passe
+            /**
+             * Filtre changement mot de passe.
              */
             if (
                 $request->has('doit_changer_mdp') &&
@@ -113,8 +120,8 @@ class UtilisateurController extends Controller
                 }
             }
 
-            /*
-             * Tri
+            /**
+             * Tri.
              */
             $allowedSorts = [
                 'matricule',
@@ -124,9 +131,16 @@ class UtilisateurController extends Controller
                 'derniere_connexion',
             ];
 
-            $sort = $request->input('sort', 'created_at');
+            $sort = $request->input(
+                'sort',
+                'created_at'
+            );
+
             $direction = strtolower(
-                $request->input('direction', 'desc')
+                $request->input(
+                    'direction',
+                    'desc'
+                )
             );
 
             if (!in_array($sort, $allowedSorts, true)) {
@@ -139,11 +153,14 @@ class UtilisateurController extends Controller
 
             $query->orderBy($sort, $direction);
 
-            /*
-             * Pagination
+            /**
+             * Pagination.
              */
             $perPage = min(
-                max($request->integer('per_page', 15), 1),
+                max(
+                    $request->integer('per_page', 15),
+                    1
+                ),
                 100
             );
 
@@ -151,7 +168,8 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Liste des utilisateurs récupérée avec succès.',
+                'message' =>
+                    'Liste des utilisateurs récupérée avec succès.',
                 'data' => $users->items(),
                 'pagination' => [
                     'current_page' => $users->currentPage(),
@@ -167,7 +185,8 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de récupérer les utilisateurs.',
+                'message' =>
+                    'Impossible de récupérer les utilisateurs.',
             ], 500);
         }
     }
@@ -210,25 +229,22 @@ class UtilisateurController extends Controller
                 'unique:utilisateurs,email',
             ],
 
-            'mot_de_passe' => [
-                'nullable',
-                'string',
-                'min:8',
-                'max:255',
-            ],
-
             'id_grade' => [
                 'required',
                 'integer',
-                Rule::exists('grades_militaires', 'id_grade')
-                    ->where('actif', true),
+                Rule::exists(
+                    'grades_militaires',
+                    'id_grade'
+                )->where('actif', true),
             ],
 
             'id_role' => [
                 'required',
                 'integer',
-                Rule::exists('roles', 'id_role')
-                    ->where('actif', true),
+                Rule::exists(
+                    'roles',
+                    'id_role'
+                )->where('actif', true),
             ],
 
             'statut' => [
@@ -241,45 +257,94 @@ class UtilisateurController extends Controller
                 'boolean',
             ],
         ], [
-            'matricule.required' => 'Le matricule est obligatoire.',
-            'matricule.unique' => 'Ce matricule existe déjà.',
-            'nom.required' => 'Le nom est obligatoire.',
-            'prenom.required' => 'Le prénom est obligatoire.',
-            'poste_fonction.required' => 'Le poste/fonction est obligatoire.',
-            'email.required' => 'L’adresse email est obligatoire.',
-            'email.email' => 'L’adresse email est invalide.',
-            'email.unique' => 'Cette adresse email existe déjà.',
-            'mot_de_passe.min' => 'Le mot de passe doit contenir au moins 8 caractères.',
-            'id_grade.required' => 'Le grade est obligatoire.',
-            'id_grade.exists' => 'Le grade sélectionné est invalide ou inactif.',
-            'id_role.required' => 'Le rôle est obligatoire.',
-            'id_role.exists' => 'Le rôle sélectionné est invalide ou inactif.',
+            'matricule.required' =>
+                'Le matricule est obligatoire.',
+
+            'matricule.unique' =>
+                'Ce matricule existe déjà.',
+
+            'nom.required' =>
+                'Le nom est obligatoire.',
+
+            'prenom.required' =>
+                'Le prénom est obligatoire.',
+
+            'poste_fonction.required' =>
+                'Le poste/fonction est obligatoire.',
+
+            'email.required' =>
+                'L’adresse email est obligatoire.',
+
+            'email.email' =>
+                'L’adresse email est invalide.',
+
+            'email.unique' =>
+                'Cette adresse email existe déjà.',
+
+            'mot_de_passe.min' =>
+                'Le mot de passe doit contenir au moins 8 caractères.',
+
+            'id_grade.required' =>
+                'Le grade est obligatoire.',
+
+            'id_grade.exists' =>
+                'Le grade sélectionné est invalide ou inactif.',
+
+            'id_role.required' =>
+                'Le rôle est obligatoire.',
+
+            'id_role.exists' =>
+                'Le rôle sélectionné est invalide ou inactif.',
         ]);
 
         try {
-            $user = DB::transaction(function () use ($validated) {
-                /*
-                 * Si aucun mot de passe n'est fourni,
-                 * génération automatique temporaire.
-                 */
-                $temporaryPassword = $validated['mot_de_passe']
-                    ?? $this->generateTemporaryPassword();
+            $user = DB::transaction(
+                function () use ($validated) {
 
-                $user = Utilisateur::create([
-                    'matricule' => trim($validated['matricule']),
-                    'nom' => trim($validated['nom']),
-                    'prenom' => trim($validated['prenom']),
-                    'poste_fonction' => trim($validated['poste_fonction']),
-                    'email' => strtolower(trim($validated['email'])),
-                    'mot_de_passe' => Hash::make($temporaryPassword),
-                    'id_grade' => $validated['id_grade'],
-                    'id_role' => $validated['id_role'],
-                    'statut' => $validated['statut'] ?? true,
-                    'doit_changer_mdp' => $validated['doit_changer_mdp'] ?? true,
-                ]);
+                    /**
+                     * Si aucun mot de passe n'est fourni,
+                     * génération automatique temporaire.
+                     */
+                    $temporaryPassword = 'Gendarmerie123';
 
-                return $user;
-            });
+                    $user = Utilisateur::create([
+                        'matricule' =>
+                            trim($validated['matricule']),
+
+                        'nom' =>
+                            trim($validated['nom']),
+
+                        'prenom' =>
+                            trim($validated['prenom']),
+
+                        'poste_fonction' =>
+                            trim($validated['poste_fonction']),
+
+                        'email' =>
+                            strtolower(
+                                trim($validated['email'])
+                            ),
+
+                        'mot_de_passe' =>
+                            Hash::make($temporaryPassword),
+
+                        'id_grade' =>
+                            $validated['id_grade'],
+
+                        'id_role' =>
+                            $validated['id_role'],
+
+                        'statut' =>
+                            $validated['statut'] ?? true,
+
+                        'doit_changer_mdp' =>
+                            $validated['doit_changer_mdp']
+                            ?? true,
+                    ]);
+
+                    return $user;
+                }
+            );
 
             $user->load([
                 'role:id_role,nom_role,actif,systeme',
@@ -288,7 +353,8 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Utilisateur créé avec succès.',
+                'message' =>
+                    'Utilisateur créé avec succès.',
                 'data' => $user,
             ], 201);
         } catch (Throwable $e) {
@@ -296,7 +362,8 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de créer l’utilisateur.',
+                'message' =>
+                    'Impossible de créer l’utilisateur.',
             ], 500);
         }
     }
@@ -315,13 +382,15 @@ class UtilisateurController extends Controller
             if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur introuvable.',
+                    'message' =>
+                        'Utilisateur introuvable.',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Utilisateur récupéré avec succès.',
+                'message' =>
+                    'Utilisateur récupéré avec succès.',
                 'data' => $user,
             ]);
         } catch (Throwable $e) {
@@ -329,22 +398,30 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de récupérer cet utilisateur.',
+                'message' =>
+                    'Impossible de récupérer cet utilisateur.',
             ], 500);
         }
     }
 
     /**
      * Modification d'un utilisateur.
+     *
+     * Le mot de passe n'est PAS modifié ici.
+     * Pour modifier le mot de passe d'un utilisateur,
+     * utiliser resetPassword().
      */
-    public function update(Request $request, int $id): JsonResponse
-    {
+    public function update(
+        Request $request,
+        int $id
+    ): JsonResponse {
         $user = Utilisateur::find($id);
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Utilisateur introuvable.',
+                'message' =>
+                    'Utilisateur introuvable.',
             ], 404);
         }
 
@@ -353,8 +430,13 @@ class UtilisateurController extends Controller
                 'required',
                 'string',
                 'max:30',
-                Rule::unique('utilisateurs', 'matricule')
-                    ->ignore($user->id_utilisateur, 'id_utilisateur'),
+                Rule::unique(
+                    'utilisateurs',
+                    'matricule'
+                )->ignore(
+                    $user->id_utilisateur,
+                    'id_utilisateur'
+                ),
             ],
 
             'nom' => [
@@ -379,22 +461,31 @@ class UtilisateurController extends Controller
                 'required',
                 'email',
                 'max:150',
-                Rule::unique('utilisateurs', 'email')
-                    ->ignore($user->id_utilisateur, 'id_utilisateur'),
+                Rule::unique(
+                    'utilisateurs',
+                    'email'
+                )->ignore(
+                    $user->id_utilisateur,
+                    'id_utilisateur'
+                ),
             ],
 
             'id_grade' => [
                 'required',
                 'integer',
-                Rule::exists('grades_militaires', 'id_grade')
-                    ->where('actif', true),
+                Rule::exists(
+                    'grades_militaires',
+                    'id_grade'
+                )->where('actif', true),
             ],
 
             'id_role' => [
                 'required',
                 'integer',
-                Rule::exists('roles', 'id_role')
-                    ->where('actif', true),
+                Rule::exists(
+                    'roles',
+                    'id_role'
+                )->where('actif', true),
             ],
 
             'statut' => [
@@ -409,21 +500,43 @@ class UtilisateurController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($user, $validated) {
-                $user->update([
-                    'matricule' => trim($validated['matricule']),
-                    'nom' => trim($validated['nom']),
-                    'prenom' => trim($validated['prenom']),
-                    'poste_fonction' => trim($validated['poste_fonction']),
-                    'email' => strtolower(trim($validated['email'])),
-                    'id_grade' => $validated['id_grade'],
-                    'id_role' => $validated['id_role'],
-                    'statut' => $validated['statut'] ?? $user->statut,
-                    'doit_changer_mdp' =>
-                        $validated['doit_changer_mdp']
-                        ?? $user->doit_changer_mdp,
-                ]);
-            });
+            DB::transaction(
+                function () use ($user, $validated) {
+
+                    $user->update([
+                        'matricule' =>
+                            trim($validated['matricule']),
+
+                        'nom' =>
+                            trim($validated['nom']),
+
+                        'prenom' =>
+                            trim($validated['prenom']),
+
+                        'poste_fonction' =>
+                            trim($validated['poste_fonction']),
+
+                        'email' =>
+                            strtolower(
+                                trim($validated['email'])
+                            ),
+
+                        'id_grade' =>
+                            $validated['id_grade'],
+
+                        'id_role' =>
+                            $validated['id_role'],
+
+                        'statut' =>
+                            $validated['statut']
+                            ?? $user->statut,
+
+                        'doit_changer_mdp' =>
+                            $validated['doit_changer_mdp']
+                            ?? $user->doit_changer_mdp,
+                    ]);
+                }
+            );
 
             $user->refresh();
 
@@ -434,7 +547,8 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Utilisateur modifié avec succès.',
+                'message' =>
+                    'Utilisateur modifié avec succès.',
                 'data' => $user,
             ]);
         } catch (Throwable $e) {
@@ -442,7 +556,8 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de modifier cet utilisateur.',
+                'message' =>
+                    'Impossible de modifier cet utilisateur.',
             ], 500);
         }
     }
@@ -450,27 +565,33 @@ class UtilisateurController extends Controller
     /**
      * Suppression logique d'un utilisateur.
      */
-    public function destroy(Request $request, int $id): JsonResponse
-    {
+    public function destroy(
+        Request $request,
+        int $id
+    ): JsonResponse {
         $user = Utilisateur::find($id);
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Utilisateur introuvable.',
+                'message' =>
+                    'Utilisateur introuvable.',
             ], 404);
         }
 
-        /*
-         * Empêcher un administrateur de supprimer son propre compte.
+        /**
+         * Empêcher un utilisateur de supprimer
+         * son propre compte.
          */
         if (
             $request->user() &&
-            (int) $request->user()->id_utilisateur === (int) $user->id_utilisateur
+            (int) $request->user()->id_utilisateur ===
+                (int) $user->id_utilisateur
         ) {
             return response()->json([
                 'success' => false,
-                'message' => 'Vous ne pouvez pas supprimer votre propre compte.',
+                'message' =>
+                    'Vous ne pouvez pas supprimer votre propre compte.',
             ], 422);
         }
 
@@ -479,14 +600,16 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Utilisateur supprimé avec succès.',
+                'message' =>
+                    'Utilisateur supprimé avec succès.',
             ]);
         } catch (Throwable $e) {
             report($e);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de supprimer cet utilisateur.',
+                'message' =>
+                    'Impossible de supprimer cet utilisateur.',
             ], 500);
         }
     }
@@ -494,78 +617,166 @@ class UtilisateurController extends Controller
     /**
      * Activation / désactivation.
      */
-    public function updateStatut(Request $request, int $id)
-    {
+    public function updateStatut(
+        Request $request,
+        int $id
+    ): JsonResponse {
         $validated = $request->validate([
-            'statut' => ['required', 'boolean'],
+            'statut' => [
+                'required',
+                'boolean',
+            ],
         ]);
 
         $utilisateur = Utilisateur::findOrFail($id);
 
-        if ($utilisateur->id_utilisateur === $request->user()->id_utilisateur) {
+        /**
+         * Empêcher la désactivation de son propre compte.
+         */
+        if (
+            $request->user() &&
+            (int) $utilisateur->id_utilisateur ===
+                (int) $request->user()->id_utilisateur
+        ) {
             return response()->json([
                 'success' => false,
-                'message' => 'Vous ne pouvez pas désactiver votre propre compte.'
+                'message' =>
+                    'Vous ne pouvez pas désactiver votre propre compte.',
             ], 422);
         }
 
-        $utilisateur->statut = $validated['statut'];
+        $utilisateur->statut =
+            $validated['statut'];
+
         $utilisateur->save();
 
         return response()->json([
             'success' => true,
-            'message' => $validated['statut']
-                ? 'Utilisateur activé avec succès.'
-                : 'Utilisateur désactivé avec succès.',
-            'data' => $utilisateur->load(['role', 'grade']),
+            'message' =>
+                $validated['statut']
+                    ? 'Utilisateur activé avec succès.'
+                    : 'Utilisateur désactivé avec succès.',
+            'data' => $utilisateur->load([
+                'role',
+                'grade',
+            ]),
         ]);
     }
+
     /**
-     * Réinitialisation du mot de passe.
+     * Réinitialisation du mot de passe
+     * par l'administrateur.
+     *
+     * IMPORTANT :
+     * - L'ancien mot de passe n'est jamais affiché.
+     * - Le nouveau mot de passe est hashé.
+     * - Le mot de passe n'est jamais retourné par l'API.
+     * - L'utilisateur devra le changer après connexion.
      */
-    public function resetPassword(Request $request, int $id): JsonResponse
-    {
+    public function resetPassword(
+        Request $request,
+        int $id
+    ): JsonResponse {
+        /**
+         * Vérification de l'utilisateur connecté.
+         */
+        $admin = $request->user();
+
+        if (!$admin) {
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Utilisateur non authentifié.',
+            ], 401);
+        }
+
+        /**
+         * Vérification du rôle Administrateur.
+         */
+        $admin->loadMissing('role');
+
+        if (
+            !$admin->role ||
+            $admin->role->nom_role !== 'Administrateur'
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Seul un administrateur peut réinitialiser un mot de passe.',
+            ], 403);
+        }
+
+        /**
+         * Recherche de l'utilisateur cible.
+         */
         $user = Utilisateur::find($id);
 
         if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Utilisateur introuvable.',
+                'message' =>
+                    'Utilisateur introuvable.',
             ], 404);
         }
 
+        /**
+         * Validation du nouveau mot de passe.
+         *
+         * Le champ confirmé doit être :
+         *
+         * mot_de_passe_confirmation
+         */
         $validated = $request->validate([
             'mot_de_passe' => [
-                'nullable',
+                'required',
                 'string',
                 'min:8',
                 'max:255',
+                'confirmed',
             ],
+        ], [
+            'mot_de_passe.required' =>
+                'Le nouveau mot de passe est obligatoire.',
+
+            'mot_de_passe.min' =>
+                'Le mot de passe doit contenir au moins 8 caractères.',
+
+            'mot_de_passe.max' =>
+                'Le mot de passe ne doit pas dépasser 255 caractères.',
+
+            'mot_de_passe.confirmed' =>
+                'La confirmation du mot de passe ne correspond pas.',
         ]);
 
         try {
-            $temporaryPassword = $validated['mot_de_passe']
-                ?? $this->generateTemporaryPassword();
+            DB::transaction(
+                function () use ($user, $validated) {
 
-            $user->update([
-                'mot_de_passe' => Hash::make($temporaryPassword),
-                'doit_changer_mdp' => true,
-            ]);
+                    $user->update([
+                        'mot_de_passe' =>
+                            Hash::make(
+                                $validated['mot_de_passe']
+                            ),
+
+                        /**
+                         * Oblige l'utilisateur à modifier
+                         * son mot de passe après connexion.
+                         */
+                        'doit_changer_mdp' => true,
+                    ]);
+                }
+            );
 
             return response()->json([
                 'success' => true,
-                'message' => 'Mot de passe réinitialisé avec succès.',
-                'data' => [
-                    'doit_changer_mdp' => true,
+                'message' =>
+                    'Mot de passe réinitialisé avec succès.',
 
-                    /*
-                     * Retourne le mot de passe temporaire uniquement
-                     * lorsqu'il a été généré automatiquement.
-                     */
-                    'mot_de_passe_temporaire' =>
-                        empty($validated['mot_de_passe'])
-                            ? $temporaryPassword
-                            : null,
+                'data' => [
+                    'id_utilisateur' =>
+                        $user->id_utilisateur,
+
+                    'doit_changer_mdp' => true,
                 ],
             ]);
         } catch (Throwable $e) {
@@ -573,7 +784,105 @@ class UtilisateurController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Impossible de réinitialiser le mot de passe.',
+                'message' =>
+                    'Impossible de réinitialiser le mot de passe.',
+            ], 500);
+        }
+    }
+
+
+
+    /**
+     * Changement du mot de passe par l'utilisateur connecté.
+     *
+     * Utilisé notamment lors de la première connexion
+     * lorsque doit_changer_mdp = true.
+     *
+     * IMPORTANT :
+     * - L'utilisateur ne fournit pas son ancien mot de passe.
+     * - L'utilisateur doit être authentifié.
+     * - Le nouveau mot de passe est hashé.
+     * - doit_changer_mdp devient false après succès.
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        /**
+         * Vérification de l'utilisateur connecté.
+         */
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur non authentifié.',
+            ], 401);
+        }
+
+        /**
+         * Validation du nouveau mot de passe.
+         *
+         * La règle "confirmed" attend :
+         * mot_de_passe_confirmation
+         */
+        $validated = $request->validate([
+            'mot_de_passe' => [
+                'required',
+                'string',
+                'min:8',
+                'max:255',
+                'confirmed',
+            ],
+        ], [
+            'mot_de_passe.required' =>
+                'Le nouveau mot de passe est obligatoire.',
+
+            'mot_de_passe.min' =>
+                'Le mot de passe doit contenir au moins 8 caractères.',
+
+            'mot_de_passe.max' =>
+                'Le mot de passe ne doit pas dépasser 255 caractères.',
+
+            'mot_de_passe.confirmed' =>
+                'La confirmation du mot de passe ne correspond pas.',
+        ]);
+
+        try {
+            DB::transaction(function () use ($user, $validated) {
+
+                $user->update([
+                    'mot_de_passe' => Hash::make(
+                        $validated['mot_de_passe']
+                    ),
+
+                    /**
+                     * Le mot de passe initial/temporaire
+                     * a maintenant été remplacé.
+                     */
+                    'doit_changer_mdp' => false,
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' =>
+                    'Mot de passe modifié avec succès.',
+
+                'data' => [
+                    'id_utilisateur' =>
+                        $user->id_utilisateur,
+
+                    'doit_changer_mdp' => false,
+                ],
+            ]);
+
+        } catch (Throwable $e) {
+
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Impossible de modifier le mot de passe.',
             ], 500);
         }
     }
@@ -583,22 +892,32 @@ class UtilisateurController extends Controller
      */
     public function roles(): JsonResponse
     {
-        $roles = Role::query()
-            ->where('actif', true)
-            ->orderBy('systeme', 'desc')
-            ->orderBy('nom_role')
-            ->get([
-                'id_role',
-                'nom_role',
-                'description',
-                'actif',
-                'systeme',
-            ]);
+        try {
+            $roles = Role::query()
+                ->where('actif', true)
+                ->orderByDesc('systeme')
+                ->orderBy('nom_role')
+                ->get([
+                    'id_role',
+                    'nom_role',
+                    'description',
+                    'actif',
+                    'systeme',
+                ]);
 
-        return response()->json([
-            'success' => true,
-            'data' => $roles,
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $roles,
+            ]);
+        } catch (Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Impossible de récupérer les rôles.',
+            ], 500);
+        }
     }
 
     /**
@@ -606,35 +925,32 @@ class UtilisateurController extends Controller
      */
     public function grades(): JsonResponse
     {
-        $grades = GradeMilitaire::query()
-            ->where('actif', true)
-            ->orderBy('ordre_hierarchique')
-            ->get([
-                'id_grade',
-                'nom_grade',
-                'ordre_hierarchique',
-                'categorie',
-                'insigne_symbole',
-                'actif',
+        try {
+            $grades = GradeMilitaire::query()
+                ->where('actif', true)
+                ->orderBy('ordre_hierarchique')
+                ->get([
+                    'id_grade',
+                    'nom_grade',
+                    'ordre_hierarchique',
+                    'categorie',
+                    'insigne_symbole',
+                    'actif',
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $grades,
             ]);
+        } catch (Throwable $e) {
+            report($e);
 
-        return response()->json([
-            'success' => true,
-            'data' => $grades,
-        ]);
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Impossible de récupérer les grades.',
+            ], 500);
+        }
     }
 
-    /**
-     * Génération d'un mot de passe temporaire.
-     */
-    private function generateTemporaryPassword(): string
-    {
-        return 'GN-' . strtoupper(
-            substr(
-                bin2hex(random_bytes(6)),
-                0,
-                10
-            )
-        );
-    }
 }

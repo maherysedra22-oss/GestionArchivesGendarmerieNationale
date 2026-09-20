@@ -416,6 +416,7 @@
                 <span
                   v-if="item.reference_objet"
                   class="reference-value"
+                  :class="getReferenceClass(item.reference_objet)"
                 >
                   {{ item.reference_objet }}
                 </span>
@@ -523,15 +524,22 @@
             <div class="mobile-info">
               <span>Référence</span>
 
-              <strong>
+              <strong
+                v-if="item.reference_objet"
+                class="reference-value"
+                :class="getReferenceClass(item.reference_objet)"
+              >
+                {{ item.reference_objet }}
+              </strong>
+
+              <strong
+                v-else
+              >
                 {{
-                  item.reference_objet ||
-                  (
-                    item.id_enregistrement !== null &&
-                    item.id_enregistrement !== undefined
-                      ? `#${item.id_enregistrement}`
-                      : '—'
-                  )
+                  item.id_enregistrement !== null &&
+                  item.id_enregistrement !== undefined
+                    ? `#${item.id_enregistrement}`
+                    : '—'
                 }}
               </strong>
             </div>
@@ -1197,7 +1205,10 @@ async function loadJournal() {
 
     journal.value =
       Array.isArray(result.data)
-        ? result.data
+        ? result.data.filter(
+            item =>
+              String(item.action || '').toUpperCase() !== 'UPLOAD'
+          )
         : []
 
     /* Pagination globale */
@@ -1617,6 +1628,7 @@ function formatAction(action) {
 
     UPDATE: 'Modification',
     UPDATED: 'Modification',
+    UPDATE_STATUT: 'Modification du statut',
 
     DELETE: 'Suppression',
     DELETED: 'Suppression',
@@ -1626,8 +1638,9 @@ function formatAction(action) {
 
     ATTACH: 'Association',
     DETACH: 'Dissociation',
+    ADD_DOCUMENT: 'Ajout de document',
 
-    UPLOAD: 'Téléversement',
+
     DOWNLOAD: 'Téléchargement',
 
     VIEW: 'Consultation',
@@ -1645,7 +1658,6 @@ function formatAction(action) {
     action
   )
 }
-
 function formatTable(table) {
   if (!table) {
     return '—'
@@ -1699,6 +1711,20 @@ function formatTable(table) {
   )
 }
 
+function getReferenceClass(reference) {
+  const value = String(reference || '').toUpperCase()
+
+  if (value.startsWith('COR_ARR')) {
+    return 'reference-arrive'
+  }
+
+  if (value.startsWith('COR_DEP')) {
+    return 'reference-depart'
+  }
+
+  return ''
+}
+
 /* ============================================================
    ACTION STYLE
 ============================================================ */
@@ -1722,7 +1748,8 @@ function getActionClass(action) {
   if (
     [
       'UPDATE',
-      'UPDATED'
+      'UPDATED',
+      'UPDATE_STATUT'
     ].includes(normalized)
   ) {
     return 'action-warning'
@@ -1743,7 +1770,7 @@ function getActionClass(action) {
       'VIEW',
       'READ',
       'DOWNLOAD',
-      'UPLOAD'
+      'ADD_DOCUMENT'
     ].includes(normalized)
   ) {
     return 'action-info'
@@ -1769,7 +1796,6 @@ function getActionClass(action) {
 
   return 'action-neutral'
 }
-
 /* ============================================================
    ACTION ICON
 ============================================================ */
@@ -1792,7 +1818,8 @@ function getActionIcon(action) {
   if (
     [
       'UPDATE',
-      'UPDATED'
+      'UPDATED',
+      'UPDATE_STATUT'
     ].includes(normalized)
   ) {
     return Pencil
@@ -1808,25 +1835,23 @@ function getActionIcon(action) {
   }
 
   if (
-    normalized ===
-    'LOGIN'
+    normalized === 'LOGIN'
   ) {
     return LogIn
   }
 
   if (
-    normalized ===
-    'LOGOUT'
+    normalized === 'LOGOUT'
   ) {
     return LogOut
   }
 
   if (
     [
-      'UPLOAD',
       'DOWNLOAD',
       'ATTACH',
-      'DETACH'
+      'DETACH',
+      'ADD_DOCUMENT'
     ].includes(normalized)
   ) {
     return FileText
@@ -1843,7 +1868,6 @@ function getActionIcon(action) {
 
   return Activity
 }
-
 /* ============================================================
    INITIALS
 ============================================================ */
@@ -2569,9 +2593,26 @@ onBeforeUnmount(() => {
 }
 
 .reference-value {
-  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.reference-arrive {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.reference-depart {
+  color: #78043e;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
 }
 
 .reference-id,

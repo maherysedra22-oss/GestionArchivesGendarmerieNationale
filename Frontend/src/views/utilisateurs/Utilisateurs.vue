@@ -19,7 +19,7 @@
           </p>
         </div>
 
-        <button class="btn btn-primary btn-new-user" @click="openCreateModal">
+        <button v-if="canCreate" class="btn btn-primary btn-new-user" @click="openCreateModal">
           <UserPlus :size="19" />
           <span>Nouvel utilisateur</span>
         </button>
@@ -301,6 +301,7 @@
               <td>
                 <div class="action-buttons">
                   <button
+                    v-if="canView"
                     class="icon-btn icon-view"
                     title="Voir"
                     aria-label="Voir"
@@ -310,6 +311,7 @@
                   </button>
 
                   <button
+                    v-if="canUpdate"
                     class="icon-btn icon-edit"
                     title="Modifier"
                     aria-label="Modifier"
@@ -319,7 +321,18 @@
                   </button>
 
                   <button
-                    v-if="!isCurrentUser(user)"
+                    v-if="canUpdate"
+                    type="button"
+                    class="icon-btn icon-password"
+                    title="Réinitialiser le mot de passe"
+                    aria-label="Réinitialiser le mot de passe"
+                    @click="openResetPasswordModal(user)"
+                  >
+                    <LockKeyhole :size="16" />
+                  </button>
+
+                  <button
+                    v-if="canUpdate && !isCurrentUser(user)"
                     class="icon-btn"
                     :class="user.statut ? 'icon-disable' : 'icon-enable'"
                     :title="user.statut ? 'Désactiver' : 'Activer'"
@@ -330,9 +343,11 @@
                   </button>
 
                   <button
+                    v-if="canDelete && !isCurrentUser(user)"
+                    type="button"
                     class="icon-btn icon-delete"
-                    title="Supprimer"
-                    aria-label="Supprimer"
+                    title="Supprimer l'utilisateur"
+                    aria-label="Supprimer l'utilisateur"
                     @click="openDeleteModal(user)"
                   >
                     <Trash2 :size="17" />
@@ -395,18 +410,28 @@
           </div>
 
           <div class="mobile-actions">
-            <button class="mobile-action view" @click="openDetailModal(user)">
+            <button v-if="canView" class="mobile-action view" @click="openDetailModal(user)">
               <Eye :size="16" />
               Voir
             </button>
 
-            <button class="mobile-action edit" @click="openEditModal(user)">
+            <button v-if="canUpdate" class="mobile-action edit" @click="openEditModal(user)">
               <Pencil :size="16" />
               Modifier
             </button>
+
+            <button
+              v-if="canUpdate"
+              type="button"
+              class="mobile-action password"
+              @click="openResetPasswordModal(user)"
+            >
+              <KeyRound :size="16" />
+              Mot de passe
+            </button>
             
             <button
-              v-if="!isCurrentUser(user)"
+              v-if="canUpdate && !isCurrentUser(user)"
               class="mobile-action"
               :class="user.statut ? 'disable' : 'enable'"
               @click="openStatusModal(user)"
@@ -417,6 +442,8 @@
 
 
             <button
+              v-if="canDelete && !isCurrentUser(user)"
+              type="button"
               class="mobile-action delete"
               @click="openDeleteModal(user)"
             >
@@ -941,6 +968,7 @@
                 </div>
 
                 <button
+                  v-if="canUpdate"
                   class="detail-edit-button"
                   type="button"
                   @click="editFromDetail"
@@ -1132,6 +1160,7 @@
               </button>
 
               <button
+                v-if="canUpdate"
                 class="btn btn-detail-edit"
                 type="button"
                 @click="editFromDetail"
@@ -1347,6 +1376,327 @@
       </Transition>
     </Teleport>
 
+
+    <!-- =========================================================
+        5. RESET PASSWORD
+    ========================================================== -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div
+          v-if="showResetPasswordModal"
+          class="modal-overlay confirm-layer reset-password-layer"
+          @mousedown.self="closeResetPasswordModal"
+        >
+          <div
+            class="reset-password-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-password-title"
+          >
+            <!-- Header -->
+            <div class="reset-password-header">
+              <div class="reset-password-icon">
+                <KeyRound :size="26" />
+              </div>
+
+              <button
+                class="modal-close reset-close"
+                type="button"
+                aria-label="Fermer"
+                :disabled="resettingPassword"
+                @click="closeResetPasswordModal"
+              >
+                <X :size="20" />
+              </button>
+
+              <div>
+                <span class="modal-eyebrow">
+                  Sécurité du compte
+                </span>
+
+                <h2 id="reset-password-title">
+                  Réinitialiser le mot de passe
+                </h2>
+
+                <p>
+                  Définissez un nouveau mot de passe pour cet utilisateur.
+                </p>
+              </div>
+            </div>
+
+            <!-- Target user -->
+            <div class="reset-target-user">
+              <div class="reset-target-avatar">
+                {{ getInitials(resetPasswordTarget) }}
+              </div>
+
+              <div class="reset-target-info">
+                <strong>
+                  {{ getFullName(resetPasswordTarget) }}
+                </strong>
+
+                <span>
+                  {{ resetPasswordTarget?.matricule || '—' }}
+                </span>
+
+                <small>
+                  {{ getRoleName(resetPasswordTarget) }}
+                </small>
+              </div>
+
+              <div class="reset-target-badge">
+                <ShieldCheck :size="15" />
+                Compte utilisateur
+              </div>
+            </div>
+
+            <!-- Security information -->
+            <div class="reset-security-note">
+              <div class="reset-security-note-icon">
+                <ShieldAlert :size="19" />
+              </div>
+
+              <div>
+                <strong>Important</strong>
+
+                <p>
+                  L'ancien mot de passe ne sera jamais affiché.
+                  Le nouveau mot de passe sera enregistré de manière
+                  sécurisée et l'utilisateur devra le modifier lors de
+                  sa prochaine connexion.
+                </p>
+              </div>
+            </div>
+
+            <!-- Form -->
+            <div class="reset-password-body">
+
+              <!-- New password -->
+              <div class="field">
+                <label for="reset-password">
+                  Nouveau mot de passe
+                  <span>*</span>
+                </label>
+
+                <div
+                  class="input-wrap password-input-wrap"
+                  :class="{
+                    'has-error':
+                      resetPasswordErrors.mot_de_passe
+                  }"
+                >
+                  <KeyRound :size="17" />
+
+                  <input
+                    id="reset-password"
+                    v-model="resetPasswordForm.mot_de_passe"
+                    :type="
+                      showResetPassword
+                        ? 'text'
+                        : 'password'
+                    "
+                    autocomplete="new-password"
+                    maxlength="255"
+                    placeholder="Minimum 8 caractères"
+                    @keyup.enter="confirmResetPassword"
+                  />
+
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    :aria-label="
+                      showResetPassword
+                        ? 'Masquer le mot de passe'
+                        : 'Afficher le mot de passe'
+                    "
+                    @click="
+                      showResetPassword =
+                        !showResetPassword
+                    "
+                  >
+                    <EyeOff
+                      v-if="showResetPassword"
+                      :size="17"
+                    />
+
+                    <Eye
+                      v-else
+                      :size="17"
+                    />
+                  </button>
+                </div>
+
+                <small
+                  v-if="resetPasswordErrors.mot_de_passe"
+                  class="field-error"
+                >
+                  {{ resetPasswordErrors.mot_de_passe }}
+                </small>
+              </div>
+
+              <!-- Confirmation -->
+              <div class="field">
+                <label for="reset-password-confirmation">
+                  Confirmer le nouveau mot de passe
+                  <span>*</span>
+                </label>
+
+                <div
+                  class="input-wrap password-input-wrap"
+                  :class="{
+                    'has-error':
+                      resetPasswordErrors.mot_de_passe_confirmation
+                  }"
+                >
+                  <CheckCircle2 :size="17" />
+
+                  <input
+                    id="reset-password-confirmation"
+                    v-model="
+                      resetPasswordForm.mot_de_passe_confirmation
+                    "
+                    :type="
+                      showResetPasswordConfirmation
+                        ? 'text'
+                        : 'password'
+                    "
+                    autocomplete="new-password"
+                    maxlength="255"
+                    placeholder="Retapez le nouveau mot de passe"
+                    @keyup.enter="confirmResetPassword"
+                  />
+
+                  <button
+                    type="button"
+                    class="password-toggle"
+                    :aria-label="
+                      showResetPasswordConfirmation
+                        ? 'Masquer la confirmation'
+                        : 'Afficher la confirmation'
+                    "
+                    @click="
+                      showResetPasswordConfirmation =
+                        !showResetPasswordConfirmation
+                    "
+                  >
+                    <EyeOff
+                      v-if="showResetPasswordConfirmation"
+                      :size="17"
+                    />
+
+                    <Eye
+                      v-else
+                      :size="17"
+                    />
+                  </button>
+                </div>
+
+                <small
+                  v-if="
+                    resetPasswordErrors.mot_de_passe_confirmation
+                  "
+                  class="field-error"
+                >
+                  {{
+                    resetPasswordErrors
+                      .mot_de_passe_confirmation
+                  }}
+                </small>
+              </div>
+
+              <!-- General error -->
+              <div
+                v-if="resetPasswordGeneralError"
+                class="form-general-error"
+              >
+                <AlertTriangle :size="18" />
+
+                <span>
+                  {{ resetPasswordGeneralError }}
+                </span>
+              </div>
+
+              <!-- Password requirements -->
+              <div class="password-requirements">
+                <div class="requirements-title">
+                  <ShieldCheck :size="16" />
+                  Exigences du mot de passe
+                </div>
+
+                <div class="requirements-grid">
+                  <div
+                    :class="{
+                      valid:
+                        resetPasswordForm.mot_de_passe.length >= 8
+                    }"
+                  >
+                    <CheckCircle2 :size="14" />
+                    Au moins 8 caractères
+                  </div>
+
+                  <div
+                    :class="{
+                      valid:
+                        resetPasswordForm.mot_de_passe &&
+                        resetPasswordForm.mot_de_passe_confirmation &&
+                        resetPasswordForm.mot_de_passe ===
+                          resetPasswordForm.mot_de_passe_confirmation
+                    }"
+                  >
+                    <CheckCircle2 :size="14" />
+                    Les mots de passe correspondent
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="reset-password-footer">
+              <button
+                class="btn btn-cancel"
+                type="button"
+                :disabled="resettingPassword"
+                @click="closeResetPasswordModal"
+              >
+                <X :size="17" />
+                Annuler
+              </button>
+
+              <button
+                class="btn reset-password-submit"
+                type="button"
+                :disabled="resettingPassword"
+                @click="confirmResetPassword"
+              >
+                <LoaderCircle
+                  v-if="resettingPassword"
+                  class="spinning"
+                  :size="18"
+                />
+
+                <KeyRound
+                  v-else
+                  :size="18"
+                />
+
+                <span v-if="resettingPassword">
+                  Enregistrement...
+                </span>
+
+                <span v-else-if="resetPasswordClicked">
+                  Enregistrer le nouveau mot de passe
+                </span>
+
+                <span v-else>
+                  Réinitialiser le mot de passe
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- =========================================================
          TOAST
     ========================================================== -->
@@ -1408,6 +1758,8 @@ import {
   watch
 } from 'vue'
 
+import { useAuthStore } from '@/stores/auth'
+
 import {
   Users,
   UserPlus,
@@ -1443,12 +1795,36 @@ import {
   KeyRound,
   Hash,
   UserRound,
-  UserCog
+  UserCog,
+  EyeOff,
+  ShieldAlert
 } from 'lucide-vue-next'
 
-/* ============================================================
-   API
-============================================================ */
+const authStore = useAuthStore()
+
+// ============================================================
+// PERMISSIONS
+// ============================================================
+
+const canView = computed(() =>
+  authStore.hasPermission('utilisateurs.view')
+)
+
+const canCreate = computed(() =>
+  authStore.hasPermission('utilisateurs.create')
+)
+
+const canUpdate = computed(() =>
+  authStore.hasPermission('utilisateurs.update')
+)
+
+const canDelete = computed(() =>
+  authStore.hasPermission('utilisateurs.delete')
+)
+
+// ============================================================
+// API
+// ============================================================
 
 const API_URL = 'http://127.0.0.1:8000/api'
 
@@ -1461,14 +1837,11 @@ function getToken() {
 }
 
 async function apiFetch(endpoint, options = {}) {
-  const token =
-    localStorage.getItem('auth_token') ||
-    sessionStorage.getItem('auth_token') ||
-    ''
+  const token = getToken()
 
   const headers = {
     Accept: 'application/json',
-    ...(options.headers || {})
+    ...options.headers
   }
 
   if (token) {
@@ -1489,7 +1862,10 @@ async function apiFetch(endpoint, options = {}) {
     request.body = JSON.stringify(request.body)
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, request)
+  const response = await fetch(
+    `${API_URL}${endpoint}`,
+    request
+  )
 
   const text = await response.text()
 
@@ -1498,22 +1874,27 @@ async function apiFetch(endpoint, options = {}) {
   try {
     data = text ? JSON.parse(text) : {}
   } catch {
-    data = { message: text }
+    data = {
+      message: text
+    }
   }
 
   if (response.status === 401) {
     localStorage.removeItem('auth_token')
     sessionStorage.removeItem('auth_token')
+
     localStorage.removeItem('utilisateur')
     sessionStorage.removeItem('utilisateur')
 
     window.location.href = '/login'
+
     throw new Error('Session expirée.')
   }
 
   if (!response.ok) {
     const error = new Error(
-      data.message || `Erreur HTTP ${response.status}`
+      data.message ||
+      `Erreur HTTP ${response.status}`
     )
 
     error.status = response.status
@@ -1524,9 +1905,10 @@ async function apiFetch(endpoint, options = {}) {
 
   return data
 }
-/* ============================================================
-   STATE
-============================================================ */
+
+// ============================================================
+// STATE
+// ============================================================
 
 const users = ref([])
 const roles = ref([])
@@ -1534,9 +1916,14 @@ const grades = ref([])
 
 const loading = ref(false)
 const loadingReferences = ref(false)
+
 const saving = ref(false)
 const changingStatus = ref(false)
 const deleting = ref(false)
+
+// ============================================================
+// FILTERS
+// ============================================================
 
 const search = ref('')
 const roleFilter = ref('')
@@ -1547,25 +1934,43 @@ const currentPage = ref(1)
 const perPage = ref(15)
 const totalPages = ref(1)
 const total = ref(0)
+
 const pagination = ref(null)
 
-/* ============================================================
-   MODALS
-============================================================ */
+// ============================================================
+// MODALS
+// ============================================================
 
 const showFormModal = ref(false)
 const showDetailModal = ref(false)
 const showStatusModal = ref(false)
 const showDeleteModal = ref(false)
+const showResetPasswordModal = ref(false)
+
+const resettingPassword = ref(false)
+const resetPasswordClicked = ref(false)
+
+const resetPasswordTarget = ref(null)
+
+const resetPasswordForm = ref({
+  mot_de_passe: '',
+  mot_de_passe_confirmation: ''
+})
+
+const resetPasswordErrors = ref({})
+const resetPasswordGeneralError = ref('')
+
+const showResetPassword = ref(false)
+const showResetPasswordConfirmation = ref(false)
 
 const isEditMode = ref(false)
 
 const selectedUser = ref(null)
 const statusTarget = ref(null)
 
-/* ============================================================
-   FORM
-============================================================ */
+// ============================================================
+// FORM
+// ============================================================
 
 const emptyForm = () => ({
   matricule: '',
@@ -1580,18 +1985,23 @@ const emptyForm = () => ({
 })
 
 const form = ref(emptyForm())
+
 const formErrors = ref({})
 const formGeneralError = ref('')
 
-/* ============================================================
-   TOASTS
-============================================================ */
+// ============================================================
+// TOASTS
+// ============================================================
 
 const toasts = ref([])
 
 let toastCounter = 0
 
-function showToast(message, type = 'success', title = '') {
+function showToast(
+  message,
+  type = 'success',
+  title = ''
+) {
   const id = ++toastCounter
 
   const defaultTitles = {
@@ -1605,7 +2015,10 @@ function showToast(message, type = 'success', title = '') {
     id,
     message,
     type,
-    title: title || defaultTitles[type] || 'Information'
+    title:
+      title ||
+      defaultTitles[type] ||
+      'Information'
   })
 
   window.setTimeout(() => {
@@ -1619,27 +2032,35 @@ function removeToast(id) {
   )
 }
 
-/* ============================================================
-   STATS
-============================================================ */
+// ============================================================
+// STATS
+// ============================================================
 
-const totalUsers = computed(() => total.value)
+const totalUsers = computed(() =>
+  total.value
+)
 
 const activeUsers = computed(() =>
-  users.value.filter(user => !!user.statut).length
+  users.value.filter(
+    user => !!user.statut
+  ).length
 )
 
 const inactiveUsers = computed(() =>
-  users.value.filter(user => !user.statut).length
+  users.value.filter(
+    user => !user.statut
+  ).length
 )
 
 const adminUsers = computed(() =>
-  users.value.filter(user => isAdmin(user)).length
+  users.value.filter(
+    user => isAdmin(user)
+  ).length
 )
 
-/* ============================================================
-   STATUS COMPUTED
-============================================================ */
+// ============================================================
+// STATUS COMPUTED
+// ============================================================
 
 const statusActionLabel = computed(() =>
   statusTarget.value?.statut
@@ -1657,15 +2078,16 @@ const statusActionIsDisable = computed(() =>
   !!statusTarget.value?.statut
 )
 
-/* ============================================================
-   MODAL STATE
-============================================================ */
+// ============================================================
+// MODAL STATE
+// ============================================================
 
 const anyModalOpen = computed(() =>
   showFormModal.value ||
   showDetailModal.value ||
   showStatusModal.value ||
-  showDeleteModal.value
+  showDeleteModal.value ||
+  showResetPasswordModal.value
 )
 
 watch(anyModalOpen, open => {
@@ -1674,29 +2096,40 @@ watch(anyModalOpen, open => {
     : ''
 })
 
-/* ============================================================
-   REFERENCES
-============================================================ */
+// ============================================================
+// REFERENCES
+// ============================================================
 
 async function loadReferences() {
   loadingReferences.value = true
 
   try {
-    const [roleResult, gradeResult] = await Promise.all([
-      apiFetch('/utilisateurs-references/roles'),
-      apiFetch('/utilisateurs-references/grades')
+    const [
+      roleResult,
+      gradeResult
+    ] = await Promise.all([
+      apiFetch(
+        '/utilisateurs-references/roles'
+      ),
+      apiFetch(
+        '/utilisateurs-references/grades'
+      )
     ])
 
-    roles.value = Array.isArray(roleResult.data)
-      ? roleResult.data
-      : []
+    roles.value =
+      Array.isArray(roleResult.data)
+        ? roleResult.data
+        : []
 
-    grades.value = Array.isArray(gradeResult.data)
-      ? gradeResult.data
-      : []
+    grades.value =
+      Array.isArray(gradeResult.data)
+        ? gradeResult.data
+        : []
+
   } catch (error) {
     showToast(
-      error.message || 'Impossible de charger les références.',
+      error.message ||
+      'Impossible de charger les références.',
       'error'
     )
   } finally {
@@ -1704,9 +2137,9 @@ async function loadReferences() {
   }
 }
 
-/* ============================================================
-   USERS
-============================================================ */
+// ============================================================
+// USERS
+// ============================================================
 
 async function loadUsers() {
   loading.value = true
@@ -1768,9 +2201,10 @@ async function loadUsers() {
       `/utilisateurs?${params.toString()}`
     )
 
-    users.value = Array.isArray(result.data)
-      ? result.data
-      : []
+    users.value =
+      Array.isArray(result.data)
+        ? result.data
+        : []
 
     pagination.value =
       result.pagination || null
@@ -1787,16 +2221,20 @@ async function loadUsers() {
       currentPage.value >
       totalPages.value
     ) {
-      currentPage.value = totalPages.value || 1
+      currentPage.value =
+        totalPages.value || 1
 
-      if (currentPage.value !== 1) {
+      if (
+        currentPage.value !== 1
+      ) {
         await loadUsers()
       }
     }
+
   } catch (error) {
     showToast(
       error.message ||
-        'Impossible de charger les utilisateurs.',
+      'Impossible de charger les utilisateurs.',
       'error'
     )
   } finally {
@@ -1804,9 +2242,9 @@ async function loadUsers() {
   }
 }
 
-/* ============================================================
-   FILTERS
-============================================================ */
+// ============================================================
+// FILTERS
+// ============================================================
 
 function applyFilters() {
   currentPage.value = 1
@@ -1835,18 +2273,21 @@ async function refreshUsers() {
   )
 }
 
-/* ============================================================
-   PAGINATION
-============================================================ */
+// ============================================================
+// PAGINATION
+// ============================================================
 
 const visiblePages = computed(() => {
-  const totalPageCount = totalPages.value
+  const totalPageCount =
+    totalPages.value
 
   if (totalPageCount <= 1) {
     return [1]
   }
 
-  const current = currentPage.value
+  const current =
+    currentPage.value
+
   const pages = []
 
   let start = Math.max(
@@ -1875,6 +2316,7 @@ const visiblePages = computed(() => {
       1,
       totalPageCount - 4
     )
+
     end = totalPageCount
   }
 
@@ -1901,6 +2343,7 @@ function goToPage(page) {
   }
 
   currentPage.value = target
+
   loadUsers()
 }
 
@@ -1928,18 +2371,20 @@ function changePerPage() {
   loadUsers()
 }
 
-/* ============================================================
-   HELPERS
-============================================================ */
+// ============================================================
+// HELPERS
+// ============================================================
 
 function getRoleName(user) {
   return (
     user?.role?.nom_role ||
+
     roles.value.find(
       role =>
         String(role.id_role) ===
         String(user?.id_role)
     )?.nom_role ||
+
     '—'
   )
 }
@@ -1947,11 +2392,13 @@ function getRoleName(user) {
 function getGradeName(user) {
   return (
     user?.grade?.nom_grade ||
+
     grades.value.find(
       grade =>
         String(grade.id_grade) ===
         String(user?.id_grade)
     )?.nom_grade ||
+
     '—'
   )
 }
@@ -1991,49 +2438,77 @@ function isAdmin(user) {
 function isCurrentUser(user) {
   try {
     const storedUser =
-      localStorage.getItem('utilisateur') ||
-      sessionStorage.getItem('utilisateur')
+      localStorage.getItem(
+        'utilisateur'
+      ) ||
+      sessionStorage.getItem(
+        'utilisateur'
+      )
 
     if (!storedUser) {
       return false
     }
 
-    const currentUser = JSON.parse(storedUser)
+    const currentUser =
+      JSON.parse(storedUser)
 
-    return String(currentUser?.id_utilisateur) ===
-      String(user?.id_utilisateur)
+    return (
+      String(
+        currentUser?.id_utilisateur
+      ) ===
+      String(
+        user?.id_utilisateur
+      )
+    )
+
   } catch (error) {
-    console.error('Impossible de récupérer l’utilisateur connecté:', error)
+    console.error(
+      'Impossible de récupérer l’utilisateur connecté:',
+      error
+    )
+
     return false
   }
 }
-function formatDate(value) {
-  if (!value) return 'Jamais'
 
-  const raw = String(value).trim()
+function formatDate(value) {
+  if (!value) {
+    return 'Jamais'
+  }
+
+  const raw =
+    String(value).trim()
 
   // Laravel envoie une date UTC avec "Z"
   const date = new Date(raw)
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return '—'
   }
 
-  return new Intl.DateTimeFormat('fr-FR', {
-    timeZone: 'Indian/Antananarivo',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  }).format(date)
+  return new Intl.DateTimeFormat(
+    'fr-FR',
+    {
+      timeZone:
+        'Indian/Antananarivo',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }
+  ).format(date)
 }
 
-/* ============================================================
-   FORM VALIDATION
-============================================================ */
+// ============================================================
+// FORM VALIDATION
+// ============================================================
 
 function parseValidationErrors(error) {
   const errors =
@@ -2066,7 +2541,9 @@ function validateForm() {
 
   const errors = {}
 
-  if (!form.value.matricule.trim()) {
+  if (
+    !form.value.matricule.trim()
+  ) {
     errors.matricule =
       'Le matricule est obligatoire.'
   }
@@ -2076,7 +2553,9 @@ function validateForm() {
       'Le nom est obligatoire.'
   }
 
-  if (!form.value.prenom.trim()) {
+  if (
+    !form.value.prenom.trim()
+  ) {
     errors.prenom =
       'Le prénom est obligatoire.'
   }
@@ -2112,40 +2591,80 @@ function validateForm() {
 
   formErrors.value = errors
 
-  return Object.keys(errors).length === 0
+  return (
+    Object.keys(errors).length === 0
+  )
 }
 
-/* ============================================================
-   CREATE / EDIT
-============================================================ */
+// ============================================================
+// CREATE / EDIT
+// ============================================================
 
 function openCreateModal() {
+  if (!canCreate.value) {
+    showToast(
+      "Vous n'avez pas la permission de créer un utilisateur.",
+      'error'
+    )
+    return
+  }
+
   isEditMode.value = false
+  selectedUser.value = null
+
   form.value = emptyForm()
+
   formErrors.value = {}
   formGeneralError.value = ''
+
   showFormModal.value = true
 }
 
 function openEditModal(user) {
+  if (!canUpdate.value) {
+    showToast(
+      "Vous n'avez pas la permission de modifier un utilisateur.",
+      'error'
+    )
+    return
+  }
+
+  if (!user) {
+    return
+  }
+
   isEditMode.value = true
+  selectedUser.value = user
 
   form.value = {
-    matricule: user?.matricule || '',
-    nom: user?.nom || '',
-    prenom: user?.prenom || '',
+    matricule:
+      user?.matricule || '',
+
+    nom:
+      user?.nom || '',
+
+    prenom:
+      user?.prenom || '',
+
     poste_fonction:
       user?.poste_fonction || '',
-    email: user?.email || '',
+
+    email:
+      user?.email || '',
+
     id_grade:
       user?.id_grade ??
       user?.grade?.id_grade ??
       '',
+
     id_role:
       user?.id_role ??
       user?.role?.id_role ??
       '',
-    statut: !!user?.statut,
+
+    statut:
+      !!user?.statut,
+
     doit_changer_mdp:
       !!user?.doit_changer_mdp
   }
@@ -2156,23 +2675,45 @@ function openEditModal(user) {
   showFormModal.value = true
 }
 
+// Fermeture forcée après opération réussie
 function closeFormModal() {
-  if (saving.value) {
-    return
-  }
-
   showFormModal.value = false
+
   formErrors.value = {}
   formGeneralError.value = ''
+
+  selectedUser.value = null
+  isEditMode.value = false
 }
 
 async function saveUser() {
+  if (
+    isEditMode.value &&
+    !canUpdate.value
+  ) {
+    showToast(
+      "Vous n'avez pas la permission de modifier un utilisateur.",
+      'error'
+    )
+    return
+  }
+
+  if (
+    !isEditMode.value &&
+    !canCreate.value
+  ) {
+    showToast(
+      "Vous n'avez pas la permission de créer un utilisateur.",
+      'error'
+    )
+    return
+  }
+
   if (!validateForm()) {
     showToast(
       'Veuillez corriger les champs indiqués.',
       'warning'
     )
-
     return
   }
 
@@ -2210,7 +2751,9 @@ async function saveUser() {
 
   try {
     if (isEditMode.value) {
-      if (!selectedUser.value?.id_utilisateur) {
+      if (
+        !selectedUser.value?.id_utilisateur
+      ) {
         throw new Error(
           "L'utilisateur à modifier est introuvable."
         )
@@ -2224,10 +2767,14 @@ async function saveUser() {
         }
       )
 
+      // Fermer immédiatement après modification
+      closeFormModal()
+
       showToast(
         'Les informations de l’utilisateur ont été mises à jour.',
         'success'
       )
+
     } else {
       await apiFetch(
         '/utilisateurs',
@@ -2237,15 +2784,18 @@ async function saveUser() {
         }
       )
 
+      // Fermer immédiatement après création
+      closeFormModal()
+
       showToast(
         'Le nouvel utilisateur a été créé avec succès.',
         'success'
       )
     }
 
-    closeFormModal()
-
+    // Actualiser la liste après fermeture
     await loadUsers()
+
   } catch (error) {
     formErrors.value =
       parseValidationErrors(error)
@@ -2256,19 +2806,32 @@ async function saveUser() {
 
     showToast(
       error.message ||
-        'Impossible d’enregistrer les modifications.',
+      'Impossible d’enregistrer les modifications.',
       'error'
     )
+
   } finally {
     saving.value = false
   }
 }
 
-/* ============================================================
-   DETAIL
-============================================================ */
+// ============================================================
+// DETAIL
+// ============================================================
 
 async function openDetailModal(user) {
+  if (!canView.value) {
+    showToast(
+      "Vous n'avez pas la permission de consulter les utilisateurs.",
+      'error'
+    )
+    return
+  }
+
+  if (!user) {
+    return
+  }
+
   selectedUser.value = user
   showDetailModal.value = true
 
@@ -2281,10 +2844,11 @@ async function openDetailModal(user) {
       selectedUser.value =
         result.data
     }
+
   } catch (error) {
     showToast(
       error.message ||
-        'Impossible de récupérer les détails.',
+      'Impossible de récupérer les détails.',
       'error'
     )
   }
@@ -2295,7 +2859,16 @@ function closeDetailModal() {
 }
 
 function editFromDetail() {
-  const user = selectedUser.value
+  if (!canUpdate.value) {
+    showToast(
+      "Vous n'avez pas la permission de modifier un utilisateur.",
+      'error'
+    )
+    return
+  }
+
+  const user =
+    selectedUser.value
 
   closeDetailModal()
 
@@ -2304,42 +2877,86 @@ function editFromDetail() {
   }
 }
 
-/* ============================================================
-   STATUS
-============================================================ */
+// ============================================================
+// STATUS
+// ============================================================
 
 function openStatusModal(user) {
+  if (!canUpdate.value) {
+    showToast(
+      "Vous n'avez pas la permission de modifier le statut d'un utilisateur.",
+      'error'
+    )
+    return
+  }
+
+  if (!user) {
+    return
+  }
+
+  if (isCurrentUser(user)) {
+    showToast(
+      'Vous ne pouvez pas modifier le statut de votre propre compte.',
+      'warning'
+    )
+    return
+  }
+
   statusTarget.value = user
   showStatusModal.value = true
 }
 
 function closeStatusModal() {
-  if (changingStatus.value) {
-    return
-  }
-
   showStatusModal.value = false
   statusTarget.value = null
 }
 
 async function confirmChangeStatus() {
-  if (!statusTarget.value) return
+  if (!canUpdate.value) {
+    showToast(
+      "Vous n'avez pas la permission de modifier le statut d'un utilisateur.",
+      'error'
+    )
+    return
+  }
 
-  const userId = statusTarget.value.id_utilisateur
-  const newStatus = !Boolean(statusTarget.value.statut)
+  if (!statusTarget.value) {
+    return
+  }
+
+  if (
+    isCurrentUser(
+      statusTarget.value
+    )
+  ) {
+    showToast(
+      'Vous ne pouvez pas modifier le statut de votre propre compte.',
+      'warning'
+    )
+    return
+  }
+
+  const userId =
+    statusTarget.value.id_utilisateur
+
+  const newStatus =
+    !statusTarget.value.statut
 
   changingStatus.value = true
 
   try {
-    await apiFetch(`/utilisateurs/${userId}/statut`, {
-      method: 'PATCH',
-      body: {
-        statut: newStatus
+    await apiFetch(
+      `/utilisateurs/${userId}/statut`,
+      {
+        method: 'PATCH',
+        body: {
+          statut: newStatus
+        }
       }
-    })
+    )
 
-    showStatusModal.value = false
-    statusTarget.value = null
+    // Fermer immédiatement après changement
+    closeStatusModal()
 
     showToast(
       newStatus
@@ -2349,37 +2966,268 @@ async function confirmChangeStatus() {
     )
 
     await loadUsers()
+
   } catch (error) {
-    console.error('Erreur changement statut:', error)
-    console.error('Réponse Laravel:', error.data)
+    console.error(
+      'Erreur changement statut:',
+      error
+    )
 
     showToast(
-      error?.data?.message || error.message || 'Erreur lors du changement de statut.',
+      error?.data?.message ||
+      error.message ||
+      'Erreur lors du changement de statut.',
       'error'
     )
+
   } finally {
     changingStatus.value = false
   }
 }
-/* ============================================================
-   DELETE
-============================================================ */
+
+// ============================================================
+// RESET PASSWORD ADMIN
+// ============================================================
+
+function openResetPasswordModal(user) {
+  if (!canUpdate.value) {
+    showToast(
+      "Vous n'avez pas la permission de réinitialiser un mot de passe.",
+      'error'
+    )
+    return
+  }
+
+  if (!user) {
+    return
+  }
+
+  resetPasswordTarget.value = user
+
+  resetPasswordForm.value = {
+    mot_de_passe: '',
+    mot_de_passe_confirmation: ''
+  }
+
+  resetPasswordErrors.value = {}
+  resetPasswordGeneralError.value = ''
+
+  showResetPassword.value = false
+  showResetPasswordConfirmation.value = false
+
+  resettingPassword.value = false
+  resetPasswordClicked.value = false
+
+  showResetPasswordModal.value = true
+}
+
+function closeResetPasswordModal() {
+  showResetPasswordModal.value = false
+
+  resetPasswordTarget.value = null
+
+  resetPasswordForm.value = {
+    mot_de_passe: '',
+    mot_de_passe_confirmation: ''
+  }
+
+  resetPasswordErrors.value = {}
+  resetPasswordGeneralError.value = ''
+
+  showResetPassword.value = false
+  showResetPasswordConfirmation.value = false
+  resetPasswordClicked.value = false
+}
+
+async function confirmResetPassword() {
+  if (!canUpdate.value) {
+    showToast(
+      "Vous n'avez pas la permission de réinitialiser un mot de passe.",
+      'error'
+    )
+    return
+  }
+
+  if (resettingPassword.value) {
+    return
+  }
+
+  // Premier clic
+  if (!resetPasswordClicked.value) {
+    resetPasswordClicked.value = true
+    return
+  }
+
+  const userId =
+    resetPasswordTarget.value?.id_utilisateur
+
+  if (!userId) {
+    resetPasswordGeneralError.value =
+      'Utilisateur introuvable.'
+    return
+  }
+
+  if (!validateResetPassword()) {
+    return
+  }
+
+  resettingPassword.value = true
+
+  try {
+    await apiFetch(
+      `/utilisateurs/${userId}/reset-password`,
+      {
+        method: 'PATCH',
+        body: {
+          mot_de_passe:
+            resetPasswordForm.value.mot_de_passe,
+
+          mot_de_passe_confirmation:
+            resetPasswordForm.value
+              .mot_de_passe_confirmation
+        }
+      }
+    )
+
+    // Fermer immédiatement après succès
+    closeResetPasswordModal()
+
+    showToast(
+      'Mot de passe réinitialisé avec succès.',
+      'success'
+    )
+
+    await loadUsers()
+
+  } catch (error) {
+    console.error(
+      'Erreur réinitialisation mot de passe:',
+      error
+    )
+
+    console.error(
+      'Réponse Laravel:',
+      error?.data
+    )
+
+    resetPasswordGeneralError.value =
+      error?.data?.message ||
+      error?.message ||
+      'Impossible de réinitialiser le mot de passe.'
+
+    // Garder le formulaire ouvert en cas d'erreur
+    resetPasswordClicked.value = true
+
+  } finally {
+    resettingPassword.value = false
+  }
+}
+
+function validateResetPassword() {
+  resetPasswordErrors.value = {}
+  resetPasswordGeneralError.value = ''
+
+  const errors = {}
+
+  const password =
+    resetPasswordForm.value.mot_de_passe
+
+  const confirmation =
+    resetPasswordForm.value
+      .mot_de_passe_confirmation
+
+  if (!password) {
+    errors.mot_de_passe =
+      'Le nouveau mot de passe est obligatoire.'
+
+  } else if (
+    password.length < 8
+  ) {
+    errors.mot_de_passe =
+      'Le mot de passe doit contenir au moins 8 caractères.'
+
+  } else if (
+    password.length > 255
+  ) {
+    errors.mot_de_passe =
+      'Le mot de passe ne doit pas dépasser 255 caractères.'
+  }
+
+  if (!confirmation) {
+    errors.mot_de_passe_confirmation =
+      'La confirmation du mot de passe est obligatoire.'
+
+  } else if (
+    password !== confirmation
+  ) {
+    errors.mot_de_passe_confirmation =
+      'Les deux mots de passe ne correspondent pas.'
+  }
+
+  resetPasswordErrors.value =
+    errors
+
+  return (
+    Object.keys(errors).length === 0
+  )
+}
+
+// ============================================================
+// DELETE
+// ============================================================
 
 function openDeleteModal(user) {
+  if (!canDelete.value) {
+    showToast(
+      "Vous n'avez pas la permission de supprimer un utilisateur.",
+      'error'
+    )
+    return
+  }
+
+  if (!user) {
+    return
+  }
+
+  if (isCurrentUser(user)) {
+    showToast(
+      'Vous ne pouvez pas supprimer votre propre compte.',
+      'warning'
+    )
+    return
+  }
+
   selectedUser.value = user
   showDeleteModal.value = true
 }
 
 function closeDeleteModal() {
-  if (deleting.value) {
-    return
-  }
-
   showDeleteModal.value = false
+  selectedUser.value = null
 }
 
 async function confirmDeleteUser() {
+  if (!canDelete.value) {
+    showToast(
+      "Vous n'avez pas la permission de supprimer un utilisateur.",
+      'error'
+    )
+    return
+  }
+
   if (!selectedUser.value) {
+    return
+  }
+
+  if (
+    isCurrentUser(
+      selectedUser.value
+    )
+  ) {
+    showToast(
+      'Vous ne pouvez pas supprimer votre propre compte.',
+      'warning'
+    )
     return
   }
 
@@ -2393,6 +3241,7 @@ async function confirmDeleteUser() {
       }
     )
 
+    // Fermer immédiatement après suppression
     closeDeleteModal()
 
     showToast(
@@ -2408,23 +3257,33 @@ async function confirmDeleteUser() {
     }
 
     await loadUsers()
+
   } catch (error) {
     showToast(
+      error?.data?.message ||
       error.message ||
-        'Impossible de supprimer cet utilisateur.',
+      'Impossible de supprimer cet utilisateur.',
       'error'
     )
+
   } finally {
     deleting.value = false
   }
 }
 
-/* ============================================================
-   KEYBOARD
-============================================================ */
+// ============================================================
+// KEYBOARD
+// ============================================================
 
 function handleEscape(event) {
   if (event.key !== 'Escape') {
+    return
+  }
+
+  if (
+    showResetPasswordModal.value
+  ) {
+    closeResetPasswordModal()
     return
   }
 
@@ -2448,9 +3307,9 @@ function handleEscape(event) {
   }
 }
 
-/* ============================================================
-   WATCH FILTERS
-============================================================ */
+// ============================================================
+// WATCH FILTERS
+// ============================================================
 
 let searchTimer = null
 
@@ -2469,7 +3328,9 @@ watch(
 watch(
   search,
   () => {
-    window.clearTimeout(searchTimer)
+    window.clearTimeout(
+      searchTimer
+    )
 
     searchTimer = window.setTimeout(
       () => {
@@ -2481,9 +3342,9 @@ watch(
   }
 )
 
-/* ============================================================
-   LIFECYCLE
-============================================================ */
+// ============================================================
+// LIFECYCLE
+// ============================================================
 
 onMounted(async () => {
   document.addEventListener(
@@ -2503,7 +3364,9 @@ onUnmounted(() => {
     handleEscape
   )
 
-  window.clearTimeout(searchTimer)
+  window.clearTimeout(
+    searchTimer
+  )
 
   document.body.style.overflow = ''
 })
@@ -5094,4 +5957,394 @@ onUnmounted(() => {
   }
 }
 
+/* ============================================================
+   RESET PASSWORD MODAL
+============================================================ */
+
+.reset-password-layer {
+  z-index: 1300;
+}
+
+.reset-password-modal {
+  width: min(620px, calc(100vw - 28px));
+  max-height: min(88vh, 760px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  box-shadow:
+    0 30px 80px rgba(15, 23, 42, 0.20),
+    0 8px 30px rgba(15, 23, 42, 0.08);
+  animation: reset-modal-in 0.22s ease-out;
+}
+
+@keyframes reset-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.reset-password-header {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 15px;
+  padding: 25px 25px 20px;
+  border-bottom: 1px solid #eef2f7;
+  background:
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #ffffff 65%
+    );
+}
+
+.reset-password-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  color: #4f46e5;
+  background: #eef2ff;
+  border: 1px solid #e0e7ff;
+  border-radius: 15px;
+}
+
+.reset-close {
+  position: absolute;
+  top: 17px;
+  right: 18px;
+}
+
+.reset-password-header h2 {
+  margin: 3px 40px 5px 0;
+  color: #0f172a;
+  font-size: 21px;
+  line-height: 1.25;
+  font-weight: 750;
+}
+
+.reset-password-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.reset-target-user {
+  margin: 20px 24px 0;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+}
+
+.reset-target-avatar {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: grid;
+  place-items: center;
+  color: #3730a3;
+  background: #e0e7ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 13px;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.reset-target-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reset-target-info strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.reset-target-info span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reset-target-info small {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.reset-target-badge {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.reset-security-note {
+  margin: 15px 24px 0;
+  display: flex;
+  gap: 11px;
+  padding: 13px;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+}
+
+.reset-security-note-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  color: #4f46e5;
+  background: #eef2ff;
+  border-radius: 9px;
+}
+
+.reset-security-note strong {
+  display: block;
+  margin-bottom: 3px;
+  color: #1e293b;
+  font-size: 12px;
+}
+
+.reset-security-note p {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.reset-password-body {
+  overflow-y: auto;
+  padding: 22px 24px;
+}
+
+.reset-password-body .field {
+  margin-bottom: 17px;
+}
+
+.reset-password-body label {
+  display: block;
+  margin-bottom: 7px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reset-password-body label span {
+  color: #ef4444;
+}
+
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap input {
+  padding-right: 45px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  width: 32px;
+  height: 32px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.password-requirements {
+  margin-top: 3px;
+  padding: 13px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+}
+
+.requirements-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.requirements-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.requirements-grid > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.requirements-grid > div.valid {
+  color: #16a34a;
+}
+
+.reset-password-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 17px 24px;
+  border-top: 1px solid #eef2f7;
+  background: #ffffff;
+}
+
+.reset-password-submit {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 17px;
+  color: #ffffff;
+  background: #4f46e5;
+  border: 1px solid #4f46e5;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.reset-password-submit:hover:not(:disabled) {
+  background: #4338ca;
+  box-shadow: 0 7px 18px rgba(79, 70, 229, 0.20);
+  transform: translateY(-1px);
+}
+
+.reset-password-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Password action button */
+
+.icon-password {
+  color: #7c3aed;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.icon-password:hover {
+  color: #fcfbfd;
+  background: #03b218;
+  border-color: #ffffff;
+}
+
+.mobile-action.password {
+  color: #6d28d9;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+/* ============================================================
+   RESPONSIVE RESET PASSWORD
+============================================================ */
+
+@media (max-width: 640px) {
+  .reset-password-modal {
+    width: calc(100vw - 20px);
+    max-height: 92vh;
+    border-radius: 18px;
+  }
+
+  .reset-password-header {
+    padding: 20px 18px 17px;
+    gap: 11px;
+  }
+
+  .reset-password-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 12px;
+  }
+
+  .reset-password-header h2 {
+    font-size: 18px;
+  }
+
+  .reset-target-user {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+
+  .reset-target-badge {
+    display: none;
+  }
+
+  .reset-security-note {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
+
+  .reset-password-body {
+    padding: 18px;
+  }
+
+  .requirements-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reset-password-footer {
+    padding: 14px 18px;
+    flex-direction: column-reverse;
+  }
+
+  .reset-password-footer .btn {
+    width: 100%;
+  }
+}
+
+/* Esorina ilay bouton œil automatique an'ny navigateur */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
 </style>

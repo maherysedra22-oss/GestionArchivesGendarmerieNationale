@@ -17,7 +17,11 @@
         </div>
       </div>
 
-      <button class="btn btn-primary" @click="ouvrirFormulaireCreation">
+      <button
+        v-if="canCreateCourriersDepart"
+        class="btn btn-primary"
+        @click="ouvrirFormulaireCreation"
+      >
         <Plus :size="18" />
         <span>Nouveau courrier</span>
       </button>
@@ -292,6 +296,7 @@
       </p>
 
       <button
+        v-if="canCreateCourriersDepart"
         class="btn btn-primary"
         @click="ouvrirFormulaireCreation"
       >
@@ -421,6 +426,7 @@
 
               <td>
                 <button
+                  v-if="canViewCourriersDepart"
                   class="document-count"
                   type="button"
                   title="Voir les documents"
@@ -436,6 +442,7 @@
                 <div class="row-actions">
 
                   <button
+                    v-if="canViewCourriersDepart"
                     class="icon-btn view"
                     title="Voir"
                     @click="voirCourrier(courrier)"
@@ -444,6 +451,7 @@
                   </button>
 
                   <button
+                    v-if="canUpdateCourriersDepart"
                     class="icon-btn edit"
                     title="Modifier"
                     @click="ouvrirFormulaireModification(courrier)"
@@ -452,6 +460,7 @@
                   </button>
 
                   <button
+                    v-if="canDeleteCourriersDepart"
                     class="icon-btn delete"
                     title="Supprimer"
                     @click="confirmerSuppression(courrier)"
@@ -552,8 +561,8 @@
 
 
         <div class="card-actions">
-
           <button
+            v-if="canViewCourriersDepart"
             class="btn-card view"
             @click="voirCourrier(courrier)"
           >
@@ -562,6 +571,7 @@
           </button>
 
           <button
+            v-if="canUpdateCourriersDepart"
             class="btn-card edit"
             @click="ouvrirFormulaireModification(courrier)"
           >
@@ -570,13 +580,13 @@
           </button>
 
           <button
+            v-if="canDeleteCourriersDepart"
             class="btn-card delete"
             @click="confirmerSuppression(courrier)"
           >
             <Trash2 :size="16" />
             Supprimer
           </button>
-
         </div>
 
       </article>
@@ -769,6 +779,7 @@
                   </select>
 
                   <button
+                    v-if="canCreateCourriersDepart"
                     type="button"
                     class="mini-action"
                     title="Gérer les natures"
@@ -806,6 +817,7 @@
                   </select>
 
                   <button
+                    v-if="canCreateCourriersDepart"
                     type="button"
                     class="mini-action"
                     title="Gérer les classements"
@@ -899,6 +911,7 @@
               </select>
 
               <button
+                v-if="canCreateCourriersDepart"
                 type="button"
                 class="btn btn-secondary"
                 @click="ajouterDestinationSelectionnee"
@@ -908,6 +921,7 @@
               </button>
 
               <button
+                v-if="canCreateCourriersDepart"
                 type="button"
                 class="btn btn-light"
                 title="Gérer les destinations"
@@ -936,6 +950,7 @@
                 </span>
 
                 <button
+                  v-if="canCreateCourriersDepart"
                   type="button"
                   @click="retirerDestination(destinationId)"
                 >
@@ -977,6 +992,7 @@
 
 
             <div
+              v-if="canCreateCourriersDepart"
               class="dropzone"
               :class="{ dragging: isDragging }"
               @dragover.prevent="isDragging = true"
@@ -1081,29 +1097,38 @@
 
                 <div class="file-actions">
 
-                  <button type="button" class="file-preview" title="Afficher" :disabled="!document?.num_doc" @click.stop="afficherDocument(document)">
-                    <Eye :size="16" />
-                  </button>
+                    <button
+                      v-if="canViewDocuments"
+                      type="button"
+                      class="file-preview"
+                      title="Afficher"
+                      :disabled="!document?.num_doc"
+                      @click.stop="afficherDocument(document)"
+                    >
+                      <Eye :size="16" />
+                    </button>
 
-                  <button
-                    type="button"
-                    class="file-download"
-                    title="Télécharger"
-                    :disabled="!document?.num_doc"
-                    @click.stop="telechargerDocument(document)"
-                  >
-                    <Download :size="16" />
-                  </button>
+                    <button
+                      v-if="canDownloadDocuments"
+                      type="button"
+                      class="file-download"
+                      title="Télécharger"
+                      :disabled="!document?.num_doc"
+                      @click.stop="telechargerDocument(document)"
+                    >
+                      <Download :size="16" />
+                    </button>
 
-                  <button
-                    type="button"
-                    class="file-remove"
-                    title="Supprimer"
-                    :disabled="!document?.num_doc"
-                    @click.stop="supprimerDocument(document)"
-                  >
-                    <Trash2 :size="16" />
-                  </button>
+                    <button
+                      v-if="canDeleteCourriersDepart"
+                      type="button"
+                      class="file-remove"
+                      title="Supprimer"
+                      :disabled="!document?.num_doc"
+                      @click.stop="supprimerDocument(document)"
+                    >
+                      <Trash2 :size="16" />
+                    </button>
 
                 </div>
 
@@ -1388,29 +1413,38 @@
 
                   <div class="file-actions">
 
-                    <button type="button" class="file-preview" title="Afficher" :disabled="!document?.num_doc" @click="afficherDocument(document)">
-                      <Eye :size="16" />
-                    </button>
+                      <button
+                        v-if="canViewDocuments"
+                        type="button"
+                        class="file-preview"
+                        title="Afficher"
+                        :disabled="!document?.num_doc"
+                        @click.stop="afficherDocument(document)"
+                      >
+                        <Eye :size="16" />
+                      </button>
 
-                    <button
-                      type="button"
-                      class="file-download"
-                      title="Télécharger"
-                      :disabled="!document?.num_doc"
-                      @click="telechargerDocument(document)"
-                    >
-                      <Download :size="17" />
-                    </button>
+                      <button
+                        v-if="canDownloadDocuments"
+                        type="button"
+                        class="file-download"
+                        title="Télécharger"
+                        :disabled="!document?.num_doc"
+                        @click.stop="telechargerDocument(document)"
+                      >
+                        <Download :size="16" />
+                      </button>
 
-                    <button
-                      type="button"
-                      class="file-remove"
-                      title="Supprimer"
-                      :disabled="!document?.num_doc"
-                      @click="supprimerDocument(document)"
-                    >
-                      <Trash2 :size="17" />
-                    </button>
+                      <button
+                        v-if="canDeleteCourriersDepart"
+                        type="button"
+                        class="file-remove"
+                        title="Supprimer"
+                        :disabled="!document?.num_doc"
+                        @click.stop="supprimerDocument(document)"
+                      >
+                        <Trash2 :size="16" />
+                      </button>
 
                   </div>
 
@@ -1435,6 +1469,7 @@
           </button>
 
           <button
+            v-if="canUpdateCourriersDepart"
             class="btn btn-primary"
             @click="modifierDepuisDetails"
           >
@@ -1609,7 +1644,7 @@
           </template>
           <div v-else class="preview-unavailable"><FileText :size="52" /><h3>Aperçu non disponible</h3><p>Utilisez le bouton Télécharger pour ouvrir ce document.</p></div>
         </div>
-        <div class="modal-footer preview-footer"><button class="btn btn-light" @click="fermerApercuDocument">Fermer</button><button class="btn btn-primary" @click="telechargerDocument(documentPreview)"><Download :size="17" /> Télécharger</button><button class="btn btn-danger" @click="supprimerDocumentDepuisApercu"><Trash2 :size="17" /> Supprimer</button></div>
+        <div class="modal-footer preview-footer"><button class="btn btn-light" @click="fermerApercuDocument">Fermer</button><button v-if="canDownloadDocuments" class="btn btn-primary" @click="telechargerDocument(documentPreview)"><Download :size="17" /> Télécharger</button><button v-if="canDeleteCourriersDepart" class="btn btn-danger" @click="supprimerDocumentDepuisApercu"><Trash2 :size="17" /> Supprimer</button></div>
       </div>
     </div>
 
@@ -1658,6 +1693,7 @@
             />
 
             <button
+              v-if="canCreateCourriersDepart"
               type="submit"
               class="btn btn-primary"
               :disabled="referenceSaving"
@@ -1721,6 +1757,7 @@
 
 
               <button
+                v-if="canDeleteCourriersDepart"
                 type="button"
                 class="reference-delete"
                 title="Supprimer"
@@ -1794,6 +1831,8 @@ import {
   computed,
   onMounted
 } from 'vue'
+
+import { useAuthStore } from '@/stores/auth'
 
 import {
   Send,
@@ -1930,7 +1969,35 @@ function gererErreurAuth(response) {
   return false
 }
 
+/* ============================================================
+   AUTH STORE / PERMISSIONS
+============================================================ */
 
+const authStore = useAuthStore()
+
+const canViewCourriersDepart = computed(() =>
+  authStore.hasPermission('courriers_depart.view')
+)
+
+const canCreateCourriersDepart = computed(() =>
+  authStore.hasPermission('courriers_depart.create')
+)
+
+const canUpdateCourriersDepart = computed(() =>
+  authStore.hasPermission('courriers_depart.update')
+)
+
+const canDeleteCourriersDepart = computed(() =>
+  authStore.hasPermission('courriers_depart.delete')
+)
+
+const canViewDocuments = computed(() =>
+  authStore.hasPermission('documents.view')
+)
+
+const canDownloadDocuments = computed(() =>
+  authStore.hasPermission('documents.download')
+)
 /* ============================================================
    STATE
 ============================================================ */

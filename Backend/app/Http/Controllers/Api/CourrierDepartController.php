@@ -497,7 +497,12 @@ class CourrierDepartController extends Controller
 
             $courrier->num_ordre_dep,
 
-            null,
+            'COR_DEP' . str_pad(
+                (string) $courrier->num_ordre_dep,
+                2,
+                '0',
+                STR_PAD_LEFT
+            ),
 
             null,
 
@@ -979,7 +984,12 @@ class CourrierDepartController extends Controller
 
             $courrierDepart->num_ordre_dep,
 
-            null,
+            'COR_DEP' . str_pad(
+                (string) $courrierDepart->num_ordre_dep,
+                2,
+                '0',
+                STR_PAD_LEFT
+            ),
 
             $donneesAvant,
 
@@ -1091,7 +1101,12 @@ class CourrierDepartController extends Controller
 
             $idEnregistrement,
 
-            null,
+            'COR_DEP' . str_pad(
+                (string) $idEnregistrement,
+                2,
+                '0',
+                STR_PAD_LEFT
+            ),
 
             $donneesAvant,
 

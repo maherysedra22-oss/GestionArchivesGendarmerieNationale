@@ -39,6 +39,9 @@ class Utilisateur extends Authenticatable
         'doit_changer_mdp',
     ];
 
+    /**
+     * Champs qui ne doivent jamais être retournés dans les réponses JSON.
+     */
     protected $hidden = [
         'mot_de_passe',
         'remember_token',
@@ -53,6 +56,9 @@ class Utilisateur extends Authenticatable
         ];
     }
 
+    /**
+     * Relation avec le rôle.
+     */
     public function role(): BelongsTo
     {
         return $this->belongsTo(
@@ -62,6 +68,9 @@ class Utilisateur extends Authenticatable
         );
     }
 
+    /**
+     * Relation avec le grade militaire.
+     */
     public function grade(): BelongsTo
     {
         return $this->belongsTo(
@@ -71,9 +80,9 @@ class Utilisateur extends Authenticatable
         );
     }
 
-
-    //Vérifie si l'utilisateur possède une permission donnée.
-    
+    /**
+     * Vérifie si l'utilisateur possède une permission donnée.
+     */
     public function hasPermission(string $codePermission): bool
     {
         return $this->statut
@@ -85,6 +94,9 @@ class Utilisateur extends Authenticatable
                 ->exists();
     }
 
+    /**
+     * Relation avec le journal des activités.
+     */
     public function journaux(): HasMany
     {
         return $this->hasMany(
@@ -94,6 +106,9 @@ class Utilisateur extends Authenticatable
         );
     }
 
+    /**
+     * Retourne le mot de passe utilisé par Laravel pour l'authentification.
+     */
     public function getAuthPassword(): string
     {
         return $this->mot_de_passe;

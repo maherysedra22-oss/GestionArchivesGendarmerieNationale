@@ -292,7 +292,7 @@ class RoleController extends Controller
             ], 404);
         }
 
-        // Le rôle Administrateur possède toujours toutes les permissions.
+        // Le rôle système ne peut pas avoir ses permissions modifiées.
         if ($role->systeme) {
             return response()->json([
                 'success' => false,
@@ -317,12 +317,17 @@ class RoleController extends Controller
             ->pluck('id_permission')
             ->toArray();
 
-        $role->permissions()->sync($permissions);
+        DB::transaction(function () use ($role, $permissions) {
+            $role->permissions()->sync($permissions);
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Permissions du rôle mises à jour avec succès.',
-            'data' => $role->load('permissions'),
+            'data' => [
+                'role' => $role->load('permissions'),
+                'permissions' => $role->permissions,
+            ],
         ]);
     }
 }

@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\DestinationController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\UtilisateurController;
 use App\Http\Controllers\Api\JournalActiviteController;
+
 // ============================================================================
 // ROUTES PUBLIQUES
 // ============================================================================
@@ -231,6 +232,11 @@ Route::middleware('auth:sanctum')->group(function () {
         [DocumentNumeriqueController::class, 'upload']
     )->middleware('permission:documents.view');
 
+    Route::get(
+        '/courriers-arrives/{id}/documents/{numDoc}/view',
+        [DocumentCourrierArriveController::class, 'view']
+    )->middleware('permission:documents.view');
+
     // Liste
     Route::get(
         '/documents',
@@ -366,6 +372,12 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/utilisateurs', [UtilisateurController::class, 'index'])
         ->middleware('permission:utilisateurs.view');
+
+    // Changement du mot de passe de l'utilisateur connecté
+    Route::patch(
+        '/utilisateurs/change-password',
+        [UtilisateurController::class, 'changePassword']
+    );
 
     Route::post('/utilisateurs', [UtilisateurController::class, 'store'])
         ->middleware('permission:utilisateurs.create');

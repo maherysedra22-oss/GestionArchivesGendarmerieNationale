@@ -5,12 +5,12 @@ import Login from '../views/Login.vue'
 import Roles from '../views/Roles.vue'
 import ChangePassword from '../views/ChangePassword.vue'
 import Dashboard from '../views/Dashboard.vue'
-import ComingSoon from '../views/ComingSoon.vue'
 import AppLayout from '../layouts/AppLayout.vue'
 import CourriersArrives from '../views/courriers/CourriersArrives.vue'
 import CourriersDepart from '../views/courriers/CourriersDepart.vue'
 import Utilisateurs from '../views/utilisateurs/Utilisateurs.vue'
 import JournalActivites from '../views/journal/JournalActivites.vue'
+import DocumentsNumeriques from '../views/DocumentsNumeriques.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -89,10 +89,10 @@ const router = createRouter({
         {
           path: 'documents',
           name: 'Documents',
-          component: ComingSoon,
+          component: DocumentsNumeriques,
         },
 
-        // =================================================
+        /* =================================================
         // DESTINATIONS
         // =================================================
         {
@@ -108,7 +108,7 @@ const router = createRouter({
           path: 'classements',
           name: 'Classements',
           component: ComingSoon,
-        },
+        },*/
 
         // =================================================
         // UTILISATEURS

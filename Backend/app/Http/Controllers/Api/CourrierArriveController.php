@@ -373,7 +373,12 @@ class CourrierArriveController extends Controller
                 'CREATE',
                 'courriers_arrives',
                 $courrier->num_enreg_courr_arr,
-                'ORD-' . $courrier->num_enreg_courr_arr,
+                'COR_ARR' . str_pad(
+                    (string) $courrier->num_enreg_courr_arr,
+                    2,
+                    '0',
+                    STR_PAD_LEFT
+                ),
                 null,
                 $courrier->toArray()
             );
@@ -527,7 +532,12 @@ class CourrierArriveController extends Controller
             'UPDATE',
             'courriers_arrives',
             $courrier->num_enreg_courr_arr,
-            'ORD-' . $courrier->num_enreg_courr_arr,
+            'COR_ARR' . str_pad(
+                (string) $courrier->num_enreg_courr_arr,
+                2,
+                '0',
+                STR_PAD_LEFT
+            ),
             $donneesAvant,
             $courrier->toArray()
         );
@@ -588,7 +598,12 @@ class CourrierArriveController extends Controller
             'UPDATE_STATUT',
             'courriers_arrives',
             $courrier->num_enreg_courr_arr,
-            'ORD-' . $courrier->num_enreg_courr_arr,
+            'COR_ARR' . str_pad(
+                (string) $courrier->num_enreg_courr_arr,
+                2,
+                '0',
+                STR_PAD_LEFT
+            ),
             [
                 'statut_dossier' => $ancienStatut,
             ],
@@ -699,7 +714,12 @@ class CourrierArriveController extends Controller
                             'ATTACH',
                             'documents_courriers_arrives',
                             $courrier->num_enreg_courr_arr,
-                            'ORD-' . $courrier->num_enreg_courr_arr,
+                            'COR_ARR' . str_pad(
+                                (string) $courrier->num_enreg_courr_arr,
+                                2,
+                                '0',
+                                STR_PAD_LEFT
+                            ),
                             null,
                             [
                                 'num_doc' => $documentExistant->num_doc,
@@ -771,7 +791,12 @@ class CourrierArriveController extends Controller
                     'ADD_DOCUMENT',
                     'documents_courriers_arrives',
                     $courrier->num_enreg_courr_arr,
-                    'ORD-' . $courrier->num_enreg_courr_arr,
+                    'COR_ARR' . str_pad(
+                        (string) $courrier->num_enreg_courr_arr,
+                        2,
+                        '0',
+                        STR_PAD_LEFT
+                    ),
                     null,
                     [
                         'num_doc' => $document->num_doc,
@@ -886,7 +911,12 @@ class CourrierArriveController extends Controller
             'DELETE',
             'courriers_arrives',
             $courrier->num_enreg_courr_arr,
-            'ORD-' . $courrier->num_enreg_courr_arr,
+            'COR_ARR' . str_pad(
+                (string) $courrier->num_enreg_courr_arr,
+                2,
+                '0',
+                STR_PAD_LEFT
+            ),
             $donneesAvant,
             null
         );
