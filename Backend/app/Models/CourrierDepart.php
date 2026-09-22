@@ -29,6 +29,7 @@ class CourrierDepart extends Model
         'num_nat',
         'objet_courr_dep',
         'id_class',
+        'priorite',
         'id_utilisateur_creation',
     ];
 

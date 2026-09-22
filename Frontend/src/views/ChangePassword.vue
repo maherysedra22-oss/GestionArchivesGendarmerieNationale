@@ -1135,7 +1135,7 @@ onMounted(async () => {
 
   width: 100%;
 
-  height: 45px;
+  height: 46px;
 
   display: flex;
 
@@ -1149,34 +1149,34 @@ onMounted(async () => {
 
   color: #ffffff;
 
-  background: #1f4e79;
+  background: #2563EB;
 
   border: 0;
 
-  border-radius: 10px;
+  border-radius: 12px;
 
-  font-size: 13px;
+  font-size: 15px;
 
   font-weight: 600;
 
   cursor: pointer;
 
   box-shadow:
-    0 5px 14px rgba(31, 78, 121, 0.18);
+    0 4px 10px rgba(37, 99, 235, 0.2);
 
   transition:
     background 0.2s ease,
-    transform 0.15s ease,
+    transform 0.2s ease,
     box-shadow 0.2s ease;
 
 }
 
 .submit-button:hover:not(:disabled) {
 
-  background: #173b5d;
+  background: #1D4ED8;
 
   box-shadow:
-    0 7px 18px rgba(31, 78, 121, 0.24);
+    0 6px 14px rgba(37, 99, 235, 0.25);
 
   transform: translateY(-1px);
 
@@ -1190,9 +1190,11 @@ onMounted(async () => {
 
 .submit-button:disabled {
 
-  opacity: 0.7;
+  opacity: 0.6;
 
   cursor: not-allowed;
+
+  transform: none;
 
 }
 

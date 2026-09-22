@@ -434,4 +434,18 @@ Route::middleware('auth:sanctum')->group(function () {
         [JournalActiviteController::class, 'show']
     )->middleware('permission:journal.view');
 
+    // ========================================================================
+    // ÉVOLUTION DES COURRIERS SUR LES 6 DERNIERS MOIS
+    // ========================================================================
+
+    Route::get(
+        '/courriers-arrives/evolution',
+        [CourrierArriveController::class, 'evolution']
+    )->middleware('permission:courriers_arrives.view');
+
+    Route::get(
+        '/courriers-depart/evolution',
+        [CourrierDepartController::class, 'evolution']
+    )->middleware('permission:courriers_depart.view');
+
 });

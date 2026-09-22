@@ -3510,24 +3510,24 @@ onUnmounted(() => {
 
 .btn-primary {
   color: white;
-  background: linear-gradient(
-    135deg,
-    #0f2747,
-    #2563eb
-  );
-  box-shadow:
-    0 8px 22px rgba(15, 39, 71, 0.22);
+  background: #2563EB;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  height: 46px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  background: linear-gradient(
-    135deg,
-    #173d68,
-    #1d4ed8
-  );
-  box-shadow:
-    0 12px 26px rgba(15, 39, 71, 0.28);
+  background: #1D4ED8;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
 
 .btn-outline {
@@ -3544,7 +3544,7 @@ onUnmounted(() => {
 
 .btn-filter {
   color: white;
-  background: var(--primary);
+  background: #2563EB;
   box-shadow: 0 5px 14px rgba(15, 39, 71, 0.16);
 }
 
@@ -4606,7 +4606,7 @@ onUnmounted(() => {
 
 .form-grid .field label {
   margin-bottom: 7px;
-  color: #334155;
+  color: darkblue;
   font-size: 11px;
 }
 
@@ -4614,7 +4614,7 @@ onUnmounted(() => {
 .form-grid .select-wrap select {
   height: 46px;
   border-radius: 11px;
-  background: #fbfcfe;
+  background: #e6e8ec;
 }
 
 .form-grid .input-wrap input:hover,
@@ -4625,7 +4625,10 @@ onUnmounted(() => {
 .form-grid .input-wrap input:focus,
 .form-grid .select-wrap select:focus {
   background: white;
+  border: 1px solid darkblue;
 }
+
+
 
 .has-error input,
 .has-error select {
@@ -4814,47 +4817,40 @@ onUnmounted(() => {
 }
 
 .form-submit-btn {
-  min-height: 44px;
+  height: 46px;
   padding: 0 19px;
   color: white;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
 }
 
-.btn-create-submit {
-  background: linear-gradient(
-    135deg,
-    #1d4ed8,
-    #0891b2
-  );
-  box-shadow:
-    0 7px 17px rgba(37, 99, 235, 0.22);
-}
-
-.btn-create-submit:hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    #1e40af,
-    #0e7490
-  );
-  transform: translateY(-1px);
-}
-
+.btn-create-submit,
 .btn-edit-submit {
-  background: linear-gradient(
-    135deg,
-    #6d28d9,
-    #4f46e5
-  );
-  box-shadow:
-    0 7px 17px rgba(124, 58, 237, 0.22);
+  background: #2563EB;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.btn-create-submit:hover:not(:disabled),
 .btn-edit-submit:hover:not(:disabled) {
-  background: linear-gradient(
-    135deg,
-    #5b21b6,
-    #4338ca
-  );
+  background: #1D4ED8;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
   transform: translateY(-1px);
+}
+
+.btn-create-submit:active:not(:disabled),
+.btn-edit-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.btn-create-submit:disabled,
+.btn-edit-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ============================================================
@@ -5200,17 +5196,20 @@ onUnmounted(() => {
 
 .btn-detail-edit {
   color: white;
-  background: linear-gradient(
-    135deg,
-    #1d4ed8,
-    #0891b2
-  );
+  background: #2563EB;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.btn-detail-edit:hover {
+.btn-detail-edit:hover:not(:disabled) {
+  background: #1D4ED8;
   transform: translateY(-1px);
-  box-shadow:
-    0 7px 17px rgba(37,99,235,0.2);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+}
+
+.btn-detail-edit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
 
 /* ============================================================
@@ -5858,7 +5857,7 @@ onUnmounted(() => {
 .form-modal-body::-webkit-scrollbar-thumb,
 .detail-body::-webkit-scrollbar-thumb,
 .table-responsive::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #99a9bc;
   border-radius: 99px;
 }
 
@@ -6234,34 +6233,38 @@ onUnmounted(() => {
 }
 
 .reset-password-submit {
-  min-height: 42px;
+  height: 46px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   padding: 0 17px;
   color: #ffffff;
-  background: #4f46e5;
-  border: 1px solid #4f46e5;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 700;
+  background: #2563EB;
+  border: 0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  transition:
-    transform 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .reset-password-submit:hover:not(:disabled) {
-  background: #4338ca;
-  box-shadow: 0 7px 18px rgba(79, 70, 229, 0.20);
+  background: #1D4ED8;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
   transform: translateY(-1px);
 }
 
+.reset-password-submit:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
 .reset-password-submit:disabled {
-  opacity: 0.65;
+  opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* Password action button */

@@ -99,6 +99,19 @@ class CourrierDepartController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | Filtre par priorité
+        |--------------------------------------------------------------------------
+        */
+        if ($request->filled('priorite')) {
+
+            $query->where(
+                'priorite',
+                $request->priorite
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | Tri sécurisé
         |--------------------------------------------------------------------------
         */
@@ -159,6 +172,17 @@ class CourrierDepartController extends Controller
             $perPage
         );
 
+        /*
+        |--------------------------------------------------------------------------
+        | Statistiques globales (indépendantes de la page)
+        |--------------------------------------------------------------------------
+        */
+        $statsQuery = CourrierDepart::whereNull('deleted_at');
+
+        $statsUrgents    = (clone $statsQuery)->where('priorite', 'URGENT')->count();
+        $statsTresUrgents = (clone $statsQuery)->where('priorite', 'TRES_URGENT')->count();
+        $statsTotal      = (clone $statsQuery)->count();
+
         return response()->json([
 
             'success' => true,
@@ -167,6 +191,12 @@ class CourrierDepartController extends Controller
                 'Liste des courriers départ récupérée avec succès.',
 
             'data' => $courriers,
+
+            'stats' => [
+                'total'      => $statsTotal,
+                'urgents'    => $statsUrgents,
+                'tresUrgents' => $statsTresUrgents,
+            ],
 
         ]);
     }
@@ -240,6 +270,13 @@ class CourrierDepartController extends Controller
                             true
                         );
                 }),
+            ],
+            
+
+            'priorite' => [
+                'sometimes',
+                'string',
+                Rule::in(['NORMAL', 'URGENT', 'TRES_URGENT']),
             ],
 
 
@@ -358,6 +395,9 @@ class CourrierDepartController extends Controller
 
             'id_class' =>
                 $validated['id_class'],
+
+            'priorite' =>
+                $validated['priorite'] ?? 'NORMAL',
 
             'id_utilisateur_creation' =>
                 Auth::id(),
@@ -699,6 +739,12 @@ class CourrierDepartController extends Controller
                     }),
                 ],
 
+                'priorite' => [
+                    'sometimes',
+                    'string',
+                    Rule::in(['NORMAL', 'URGENT', 'TRES_URGENT']),
+                ],
+
 
                 /*
                 |--------------------------------------------------
@@ -783,6 +829,8 @@ class CourrierDepartController extends Controller
                     'objet_courr_dep',
 
                     'id_class',
+
+                    'priorite',
 
                 ])
                 ->toArray();

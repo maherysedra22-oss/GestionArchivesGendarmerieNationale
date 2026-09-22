@@ -1,15 +1,38 @@
+```vue
 <script setup>
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  ShieldCheck,
+  Mail,
+  LockKeyhole,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Check,
+  AlertCircle,
+  LoaderCircle,
+  Building2,
+  FileText,
+  Activity,
+  Database,
+  Sparkles,
+} from 'lucide-vue-next'
+
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
 
+/* =========================================================
+   ÉTAT DU FORMULAIRE
+========================================================= */
+
 const emailInput = ref(null)
 const username = ref('')
 const password = ref('')
 const remember = ref(false)
+
 const loading = ref(false)
 const errorMessage = ref('')
 const showPassword = ref(false)
@@ -17,9 +40,21 @@ const capsLockOn = ref(false)
 
 const currentYear = new Date().getFullYear()
 
+/* =========================================================
+   VALIDATION
+========================================================= */
+
 const canSubmit = computed(() => {
-  return username.value.trim().length > 0 && password.value.length > 0 && !loading.value
+  return (
+    username.value.trim().length > 0 &&
+    password.value.length > 0 &&
+    !loading.value
+  )
 })
+
+/* =========================================================
+   CAPS LOCK
+========================================================= */
 
 const detectCapsLock = (event) => {
   if (typeof event.getModifierState === 'function') {
@@ -27,39 +62,40 @@ const detectCapsLock = (event) => {
   }
 }
 
+/* =========================================================
+   CONNEXION
+========================================================= */
+
 const handleLogin = async () => {
   errorMessage.value = ''
 
-  // Vérification
   if (!username.value.trim() || !password.value) {
     errorMessage.value =
       'Veuillez renseigner votre adresse e-mail et votre mot de passe.'
 
     await nextTick()
     emailInput.value?.focus()
-
     return
   }
 
   if (loading.value) return
 
-  // Récupérer les valeurs avant de vider les champs
   const email = username.value.trim()
   const motDePasse = password.value
 
-  // Vider immédiatement les champs
+  /*
+   * Nettoyage immédiat des champs
+   * après récupération des valeurs.
+   */
   username.value = ''
   password.value = ''
 
-  // Remettre le focus sur Email
   await nextTick()
   emailInput.value?.focus()
 
-  // Démarrer le chargement
   loading.value = true
 
   try {
-    // Appel du Store Pinia
     const data = await auth.login(
       email,
       motDePasse,
@@ -67,13 +103,7 @@ const handleLogin = async () => {
     )
 
     console.log('LOGIN USER:', data.utilisateur)
-    console.log(
-      'DOIT CHANGER:',
-      data.utilisateur?.doit_changer_mdp,
-      typeof data.utilisateur?.doit_changer_mdp
-    )
 
-    // Vérifier si l'utilisateur doit changer son mot de passe
     const doitChangerMotDePasse =
       data.utilisateur?.doit_changer_mdp === true ||
       data.utilisateur?.doit_changer_mdp === 1 ||
@@ -84,7 +114,6 @@ const handleLogin = async () => {
     } else {
       router.push('/dashboard')
     }
-
   } catch (error) {
     console.error('Erreur de connexion:', error)
 
@@ -92,121 +121,282 @@ const handleLogin = async () => {
       error.message ||
       'Impossible de contacter le serveur.'
 
-    // Champs restent vides
     username.value = ''
     password.value = ''
 
-    // Retour focus Email
     await nextTick()
     emailInput.value?.focus()
-
   } finally {
     loading.value = false
   }
 }
 
+/* =========================================================
+   MOUNT
+========================================================= */
 
 onMounted(() => {
-  nextTick(() => emailInput.value?.focus())
+  nextTick(() => {
+    emailInput.value?.focus()
+  })
 })
 </script>
 
 <template>
   <div class="login-page">
+
     <!-- =====================================================
-         PANNEAU INSTITUTIONNEL
+         BACKGROUND DECORATION
     ====================================================== -->
-    <section class="institution-panel" aria-hidden="true">
+
+    <div class="background-decoration" aria-hidden="true">
+      <div class="glow glow-one"></div>
+      <div class="glow glow-two"></div>
+      <div class="grid-pattern"></div>
+    </div>
+
+    <!-- =====================================================
+         BRAND / INSTITUTION PANEL
+    ====================================================== -->
+
+    <aside class="institution-panel">
+
+      <div class="institution-overlay"></div>
+
       <div class="institution-content">
-        <div class="institution-emblem">GN</div>
 
-        <div class="institution-name">
-          <span>République de Madagascar</span>
-          <h1>Gendarmerie<br />Nationale</h1>
-          <div class="gold-line"></div>
-          <p class="institution-service">Service des archives</p>
+        <!-- Brand -->
+        <div class="brand-block">
+
+          <div class="brand-mark">
+            <div class="brand-mark-inner">
+              GN
+            </div>
+
+            <span class="brand-status"></span>
+          </div>
+
+          <div class="brand-text">
+            <span class="brand-country">
+              RÉPUBLIQUE DE MADAGASCAR
+            </span>
+
+            <strong>
+              GENDARMERIE NATIONALE
+            </strong>
+
+            <span>
+              Service des archives
+            </span>
+          </div>
+
         </div>
 
-        <div class="institution-description">
-          <span class="eyebrow">Plateforme administrative</span>
-          <h2>Gestion des archives administratives</h2>
+        <!-- Main presentation -->
+        <div class="institution-hero">
+
+          <div class="hero-badge">
+            <Sparkles :size="14" />
+            Plateforme administrative
+          </div>
+
+          <h1>
+            Gestion des
+            <span>archives administratives.</span>
+          </h1>
+
           <p>
-            Une plateforme sécurisée destinée à la gestion, la conservation et
-            la consultation des courriers et documents administratifs.
+            Une plateforme centralisée pour organiser,
+            sécuriser et assurer la traçabilité des
+            courriers et documents administratifs.
           </p>
+
         </div>
 
-        <ul class="institution-features">
-          <li class="feature">
-            <span class="feature-icon">✓</span>
-            <div>
-              <strong>Gestion centralisée</strong>
-              <small>Courriers et documents</small>
-            </div>
-          </li>
+        <!-- Features -->
+        <div class="feature-grid">
 
-          <li class="feature">
-            <span class="feature-icon">✓</span>
-            <div>
-              <strong>Accès sécurisé</strong>
-              <small>Authentification des utilisateurs</small>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <Database :size="18" />
             </div>
-          </li>
 
-          <li class="feature">
-            <span class="feature-icon">✓</span>
             <div>
-              <strong>Traçabilité</strong>
-              <small>Journalisation des activités</small>
+              <strong>Centralisé</strong>
+              <span>Documents organisés</span>
             </div>
-          </li>
-        </ul>
+          </div>
 
-        <div class="institution-footer">Système interne de gestion des archives</div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <ShieldCheck :size="18" />
+            </div>
+
+            <div>
+              <strong>Sécurisé</strong>
+              <span>Accès contrôlé</span>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <Activity :size="18" />
+            </div>
+
+            <div>
+              <strong>Traçable</strong>
+              <span>Activités journalisées</span>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <FileText :size="18" />
+            </div>
+
+            <div>
+              <strong>Structuré</strong>
+              <span>Courriers et pièces</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Bottom -->
+        <div class="institution-bottom">
+
+          <div class="bottom-security">
+            <ShieldCheck :size="15" />
+            <span>
+              Système interne sécurisé
+            </span>
+          </div>
+
+          <span class="bottom-version">
+            Administration numérique
+          </span>
+
+        </div>
+
       </div>
-    </section>
+    </aside>
 
     <!-- =====================================================
-         SECTION LOGIN
+         LOGIN AREA
     ====================================================== -->
+
     <main class="login-section">
+
       <div class="login-container">
-        <!-- Mobile logo -->
+
+        <!-- Mobile brand -->
         <div class="mobile-brand">
-          <div class="mobile-logo">GN</div>
-          <div>
+
+          <div class="mobile-brand-mark">
+            GN
+          </div>
+
+          <div class="mobile-brand-text">
             <strong>Gendarmerie Nationale</strong>
             <span>Gestion des archives</span>
           </div>
-        </div>
 
-        <!-- Card -->
-        <div class="login-card">
-          <div class="login-header">
-            <span class="login-eyebrow">Espace personnel</span>
-            <h2>Bienvenue</h2>
-            <p>Connectez-vous pour accéder à votre espace de gestion.</p>
+          <div class="mobile-security">
+            <ShieldCheck :size="17" />
           </div>
 
-          <!-- Error -->
-          <transition name="alert">
-            <div v-if="errorMessage" class="alert-error" role="alert" aria-live="assertive">
-              <span class="alert-icon" aria-hidden="true">!</span>
-              <div>
-                <strong>Connexion impossible</strong>
-                <p>{{ errorMessage }}</p>
-              </div>
+        </div>
+
+        <!-- Login card -->
+        <section class="login-card">
+
+          <!-- Top status -->
+          <div class="card-top">
+
+            <div class="secure-badge">
+              <span class="secure-dot"></span>
+              <ShieldCheck :size="14" />
+              Accès sécurisé
             </div>
-          </transition>
+
+            <span class="system-label">
+              ESPACE INTERNE
+            </span>
+
+          </div>
+
+          <!-- Header -->
+          <header class="login-header">
+
+            <div class="welcome-icon">
+              <LockKeyhole :size="22" />
+            </div>
+
+            <div>
+              <span class="login-eyebrow">
+                Authentification
+              </span>
+
+              <h2>
+                Bienvenue
+              </h2>
+
+              <p>
+                Connectez-vous à votre espace de gestion
+                des archives administratives.
+              </p>
+            </div>
+
+          </header>
+
+          <!-- Error -->
+          <Transition name="alert">
+
+            <div
+              v-if="errorMessage"
+              class="alert-error"
+              role="alert"
+              aria-live="assertive"
+            >
+
+              <div class="alert-icon">
+                <AlertCircle :size="18" />
+              </div>
+
+              <div class="alert-content">
+
+                <strong>
+                  Connexion impossible
+                </strong>
+
+                <p>
+                  {{ errorMessage }}
+                </p>
+
+              </div>
+
+            </div>
+
+          </Transition>
 
           <!-- Form -->
-          <form @submit.prevent="handleLogin" novalidate>
+          <form
+            @submit.prevent="handleLogin"
+            novalidate
+          >
+
             <!-- Email -->
             <div class="form-group">
-              <label for="email">Adresse e-mail</label>
+
+              <label for="email">
+                Adresse e-mail
+              </label>
 
               <div class="input-wrapper">
-                <span class="input-icon" aria-hidden="true">@</span>
+
+                <div class="input-icon">
+                  <Mail :size="18" />
+                </div>
 
                 <input
                   id="email"
@@ -220,18 +410,36 @@ onMounted(() => {
                   :aria-invalid="!!errorMessage"
                   required
                 />
+
               </div>
+
             </div>
 
             <!-- Password -->
             <div class="form-group">
+
               <div class="label-row">
-                <label for="password">Mot de passe</label>
-                <a href="#" class="forgot-link" tabindex="0">Mot de passe oublié ?</a>
+
+                <label for="password">
+                  Mot de passe
+                </label>
+
+                <a
+                  href="#"
+                  class="forgot-link"
+                  tabindex="0"
+                  @click.prevent
+                >
+                  Mot de passe oublié ?
+                </a>
+
               </div>
 
               <div class="input-wrapper">
-                <span class="input-icon" aria-hidden="true">🔒</span>
+
+                <div class="input-icon">
+                  <LockKeyhole :size="18" />
+                </div>
 
                 <input
                   id="password"
@@ -250,57 +458,155 @@ onMounted(() => {
                 <button
                   type="button"
                   class="password-toggle"
-                  @click="showPassword = !showPassword"
-                  :aria-label="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                  :disabled="loading"
+                  :aria-label="
+                    showPassword
+                      ? 'Masquer le mot de passe'
+                      : 'Afficher le mot de passe'
+                  "
                   :aria-pressed="showPassword"
+                  @click="showPassword = !showPassword"
                 >
-                  <svg v-if="showPassword" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path fill="currentColor" d="M12 6c-5 0-9.27 3.11-11 7.5 1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 9.11 17 6 12 6zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
-                  </svg>
-                  <svg v-else viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path fill="currentColor" d="M3.28 2.22 2.22 3.28l3.1 3.1C3.53 7.86 1.98 9.94 1 12.5c1.73 4.39 6 7.5 11 7.5 1.98 0 3.83-.49 5.44-1.34l3.28 3.28 1.06-1.06L3.28 2.22zM12 17a5 5 0 0 1-5-5c0-.73.16-1.42.44-2.04l1.55 1.55A3 3 0 0 0 12 15c.19 0 .38-.02.56-.05l1.55 1.55A4.94 4.94 0 0 1 12 17zm0-10c5 0 9.27 3.11 11 7.5a12.9 12.9 0 0 1-3.06 4.28l-1.43-1.43A10.9 10.9 0 0 0 21 12.5C19.4 8.86 15.94 6.5 12 6.5c-1.1 0-2.16.19-3.14.54L7.4 5.6A12.5 12.5 0 0 1 12 4.5z"/>
-                  </svg>
+
+                  <EyeOff
+                    v-if="showPassword"
+                    :size="18"
+                  />
+
+                  <Eye
+                    v-else
+                    :size="18"
+                  />
+
                 </button>
+
               </div>
 
-              <p v-if="capsLockOn" id="capslock-hint" class="capslock-hint">
-                Verr. Maj activé
-              </p>
+              <Transition name="caps">
+
+                <p
+                  v-if="capsLockOn"
+                  id="capslock-hint"
+                  class="capslock-hint"
+                >
+                  <AlertCircle :size="14" />
+                  Verr. Maj est activé
+                </p>
+
+              </Transition>
+
             </div>
 
-            <!-- Remember me -->
+            <!-- Remember -->
             <label class="remember-row">
-              <input v-model="remember" type="checkbox" :disabled="loading" />
-              <span>Rester connecté sur cet appareil</span>
+
+              <span class="checkbox-wrapper">
+
+                <input
+                  v-model="remember"
+                  type="checkbox"
+                  :disabled="loading"
+                />
+
+                <span class="custom-checkbox">
+                  <Check :size="12" />
+                </span>
+
+              </span>
+
+              <span class="remember-text">
+                Rester connecté sur cet appareil
+              </span>
+
             </label>
 
             <!-- Submit -->
-            <button type="submit" class="login-button" :disabled="!canSubmit">
-              <span v-if="loading" class="spinner" aria-hidden="true"></span>
-              <span>{{ loading ? 'Connexion en cours...' : 'Se connecter' }}</span>
-              <span v-if="!loading" class="button-arrow" aria-hidden="true">→</span>
+            <button
+              type="submit"
+              class="login-button"
+              :disabled="!canSubmit"
+            >
+
+              <template v-if="loading">
+
+                <LoaderCircle
+                  class="button-spinner"
+                  :size="18"
+                />
+
+                <span>
+                  Connexion en cours...
+                </span>
+
+              </template>
+
+              <template v-else>
+
+                <span>
+                  Se connecter
+                </span>
+
+              </template>
+
             </button>
+
           </form>
 
+          <!-- Security -->
           <div class="security-info">
-            <span class="security-icon" aria-hidden="true">✓</span>
-            <p>Accès réservé aux utilisateurs autorisés du système.</p>
-          </div>
-        </div>
 
+            <div class="security-check">
+              <ShieldCheck :size="17" />
+            </div>
+
+            <div>
+              <strong>
+                Accès réservé
+              </strong>
+
+              <p>
+                Seuls les utilisateurs autorisés
+                peuvent accéder à cette plateforme.
+              </p>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- Footer -->
         <footer class="login-footer">
-          <span>© {{ currentYear }} Gendarmerie Nationale</span>
-          <span class="footer-separator" aria-hidden="true">•</span>
-          <span>Gestion des archives</span>
+
+          <div class="footer-main">
+            <span>
+              © {{ currentYear }} Gendarmerie Nationale
+            </span>
+
+            <span class="footer-dot">
+              •
+            </span>
+
+            <span>
+              Gestion des archives
+            </span>
+          </div>
+
+          <span class="footer-system">
+            Système administratif interne
+          </span>
+
         </footer>
+
       </div>
     </main>
+
   </div>
 </template>
 
 <style scoped>
+
 /* =========================================================
-   RESET / TOKENS
+   DESIGN TOKENS
 ========================================================= */
 
 * {
@@ -308,37 +614,119 @@ onMounted(() => {
 }
 
 .login-page {
-  --navy-950: #061f3e;
-  --navy-900: #08264d;
-  --navy-800: #0b2d5c;
-  --navy-700: #123f70;
-  --navy-600: #1b4d80;
-  --gold: #d5b45c;
-  --ink: #243b53;
-  --ink-soft: #334e68;
-  --slate: #829ab1;
-  --slate-light: #b9c9da;
-  --border: #d9e2ec;
+  --navy-950: #041426;
+  --navy-900: #061b32;
+  --navy-800: #092846;
+  --navy-700: #0d3a61;
+  --navy-600: #145584;
+  --navy-500: #1d6d9d;
+
+  --gold: #d6b45d;
+  --gold-light: #e5ca82;
+
+  --white: #ffffff;
+  --surface: #ffffff;
+  --surface-soft: #f8fafc;
+
+  --ink: #172b3f;
+  --ink-soft: #4a6075;
+  --muted: #8093a6;
+
+  --border: #dce5ed;
+  --border-light: #e9eef3;
+
   --danger: #b42318;
-  --danger-bg: #fff7f7;
-  --danger-border: #f2cccc;
-  --success-bg: #edf9f1;
-  --success-ink: #26733f;
-  --radius-lg: 14px;
-  --radius-md: 8px;
+  --danger-bg: #fff7f6;
+  --danger-border: #f1cfcb;
+
+  --success: #247a4a;
+  --success-bg: #eef9f2;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 
   min-height: 100dvh;
   display: flex;
-  background: #f5f7fa;
+
+  background:
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(31, 108, 158, 0.06),
+      transparent 30%
+    ),
+    #f5f8fb;
+
   color: var(--ink);
-  font-family: Inter, "Segoe UI", Arial, sans-serif;
+
+  font-family:
+    Inter,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+
+  overflow: hidden;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .login-page * {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
-  }
+/* =========================================================
+   BACKGROUND
+========================================================= */
+
+.background-decoration {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.35;
+}
+
+.glow-one {
+  width: 300px;
+  height: 300px;
+  top: -120px;
+  right: 12%;
+  background: rgba(27, 92, 137, 0.08);
+}
+
+.glow-two {
+  width: 250px;
+  height: 250px;
+  bottom: -120px;
+  right: 25%;
+  background: rgba(214, 180, 93, 0.08);
+}
+
+.grid-pattern {
+  position: absolute;
+  inset: 0;
+
+  background-image:
+    linear-gradient(
+      rgba(8, 38, 77, 0.025) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(8, 38, 77, 0.025) 1px,
+      transparent 1px
+    );
+
+  background-size: 36px 36px;
+
+  mask-image: linear-gradient(
+    to bottom,
+    black,
+    transparent 70%
+  );
 }
 
 /* =========================================================
@@ -347,173 +735,384 @@ onMounted(() => {
 
 .institution-panel {
   position: relative;
-  width: 44%;
-  min-width: 380px;
+  z-index: 1;
+
+  width: 47%;
+  min-width: 500px;
+
   min-height: 100dvh;
+
   display: flex;
   align-items: center;
-  padding: clamp(32px, 4vw, 60px);
+
+  padding:
+    clamp(40px, 6vw, 78px)
+    clamp(40px, 6vw, 82px);
+
   overflow: hidden;
-  background: linear-gradient(135deg, var(--navy-950) 0%, var(--navy-800) 55%, var(--navy-700) 100%);
+
   color: white;
+
+  background:
+    radial-gradient(
+      circle at 80% 10%,
+      rgba(38, 112, 157, 0.42),
+      transparent 34%
+    ),
+    linear-gradient(
+      145deg,
+      var(--navy-950) 0%,
+      var(--navy-900) 42%,
+      var(--navy-700) 100%
+    );
 }
 
 .institution-panel::before {
   content: "";
+
   position: absolute;
-  width: 500px;
-  height: 500px;
-  right: -250px;
-  top: -220px;
+
+  width: 560px;
+  height: 560px;
+
+  right: -300px;
+  top: -250px;
+
   border-radius: 50%;
-  border: 1px solid rgba(213, 180, 92, 0.15);
+
+  border: 1px solid rgba(214, 180, 93, 0.16);
 }
 
 .institution-panel::after {
   content: "";
+
   position: absolute;
-  width: 350px;
-  height: 350px;
-  left: -200px;
-  bottom: -180px;
+
+  width: 460px;
+  height: 460px;
+
+  left: -310px;
+  bottom: -270px;
+
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.institution-overlay {
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      120deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.025) 50%,
+      transparent 70%
+    );
 }
 
 .institution-content {
   position: relative;
   z-index: 2;
+
   width: 100%;
-  max-width: 600px;
+  max-width: 650px;
+
   margin: auto;
-  animation: fade-in-up 0.6s ease both;
+
+  animation: fade-up 0.7s ease both;
 }
 
-.institution-emblem {
-  width: 70px;
-  height: 70px;
+/* =========================================================
+   BRAND
+========================================================= */
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+}
+
+.brand-mark {
+  position: relative;
+
+  width: 62px;
+  height: 62px;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
-  border-radius: 50%;
-  background: var(--gold);
-  color: var(--navy-900);
-  border: 4px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-  font-size: 20px;
-  font-weight: 900;
-}
 
-.institution-name > span {
-  color: #aebfd0;
-  font-size: 12px;
-  letter-spacing: 1px;
-  font-weight: 600;
-}
-
-.institution-name h1 {
-  margin: 10px 0 14px;
-  color: white;
-  font-size: clamp(24px, 2.4vw, 28px);
-  line-height: 1.15;
-  font-weight: 700;
-}
-
-.gold-line {
-  width: 55px;
-  height: 3px;
-  background: var(--gold);
-  margin-bottom: 12px;
-}
-
-.institution-service {
-  margin: 0;
-  color: var(--gold);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.institution-description {
-  margin-top: clamp(40px, 6vw, 75px);
-}
-
-.eyebrow {
-  color: var(--gold);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
-
-.institution-description h2 {
-  max-width: 480px;
-  margin: 14px 0;
-  color: white;
-  font-size: clamp(26px, 2.8vw, 34px);
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-.institution-description p {
-  max-width: 460px;
-  margin: 0;
-  color: var(--slate-light);
-  font-size: 14px;
-  line-height: 1.75;
-}
-
-.institution-features {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 22px;
-  margin: 40px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.feature {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.feature-icon {
-  width: 27px;
-  height: 27px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: rgba(213, 180, 92, 0.14);
-  color: var(--gold);
-  font-size: 11px;
-  font-weight: 900;
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      var(--gold-light),
+      var(--gold)
+    );
+
+  box-shadow:
+    0 14px 35px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+
+  transform: rotate(-3deg);
 }
 
-.feature div {
+.brand-mark-inner {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid rgba(6, 27, 50, 0.2);
+  border-radius: 14px;
+
+  color: var(--navy-900);
+
+  font-size: 15px;
+  font-weight: 900;
+
+  transform: rotate(3deg);
+}
+
+.brand-status {
+  position: absolute;
+
+  width: 10px;
+  height: 10px;
+
+  right: -3px;
+  bottom: 5px;
+
+  border-radius: 50%;
+
+  background: #54c982;
+
+  border: 2px solid var(--navy-900);
+}
+
+.brand-text {
   display: flex;
   flex-direction: column;
 }
 
-.feature strong {
-  color: #e7eef5;
-  font-size: 12px;
-  font-weight: 600;
+.brand-country {
+  margin-bottom: 5px;
+
+  color: rgba(224, 235, 244, 0.62);
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 1.4px;
 }
 
-.feature small {
-  margin-top: 3px;
-  color: #829ab1;
-  font-size: 11px;
-}
+.brand-text strong {
+  color: white;
 
-.institution-footer {
-  margin-top: 56px;
-  color: #6f89a2;
-  font-size: 11px;
+  font-size: 15px;
+  font-weight: 750;
+
   letter-spacing: 0.3px;
+}
+
+.brand-text span:last-child {
+  margin-top: 4px;
+
+  color: var(--gold-light);
+
+  font-size: 11px;
+  font-weight: 600;
+
+  letter-spacing: 0.5px;
+}
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.institution-hero {
+  margin-top: clamp(80px, 10vh, 115px);
+}
+
+.hero-badge {
+  width: fit-content;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 7px 11px;
+
+  border: 1px solid rgba(214, 180, 93, 0.25);
+  border-radius: 999px;
+
+  background: rgba(214, 180, 93, 0.08);
+
+  color: var(--gold-light);
+
+  font-size: 11px;
+  font-weight: 650;
+
+  backdrop-filter: blur(8px);
+}
+
+.institution-hero h1 {
+  max-width: 590px;
+
+  margin: 20px 0 17px;
+
+  color: white;
+
+  font-size: clamp(36px, 4vw, 54px);
+  line-height: 1.04;
+
+  font-weight: 750;
+
+  letter-spacing: -1.8px;
+}
+
+.institution-hero h1 span {
+  display: block;
+
+  color: var(--gold-light);
+}
+
+.institution-hero p {
+  max-width: 510px;
+
+  margin: 0;
+
+  color: rgba(218, 229, 239, 0.72);
+
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+/* =========================================================
+   FEATURE CARDS
+========================================================= */
+
+.feature-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+
+  margin-top: 42px;
+
+  max-width: 570px;
+}
+
+.feature-card {
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 13px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+
+  background: rgba(255, 255, 255, 0.045);
+
+  backdrop-filter: blur(10px);
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+
+  background: rgba(255, 255, 255, 0.07);
+
+  border-color: rgba(214, 180, 93, 0.2);
+}
+
+.feature-icon {
+  width: 35px;
+  height: 35px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 9px;
+
+  background: rgba(214, 180, 93, 0.1);
+
+  color: var(--gold-light);
+}
+
+.feature-card div:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-card strong {
+  color: #f1f5f8;
+
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.feature-card span {
+  margin-top: 3px;
+
+  color: rgba(190, 207, 220, 0.58);
+
+  font-size: 10.5px;
+}
+
+/* =========================================================
+   INSTITUTION BOTTOM
+========================================================= */
+
+.institution-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-top: 55px;
+  padding-top: 20px;
+
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.bottom-security {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: rgba(207, 222, 233, 0.65);
+
+  font-size: 10.5px;
+}
+
+.bottom-security svg {
+  color: #65c78b;
+}
+
+.bottom-version {
+  color: rgba(182, 200, 214, 0.4);
+
+  font-size: 10px;
 }
 
 /* =========================================================
@@ -521,20 +1120,31 @@ onMounted(() => {
 ========================================================= */
 
 .login-section {
+  position: relative;
+  z-index: 2;
+
   flex: 1;
+
   min-height: 100dvh;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 32px;
+
+  padding: 50px 40px;
 }
 
 .login-container {
   width: 100%;
-  max-width: 420px;
-  animation: fade-in-up 0.5s ease both;
-  animation-delay: 0.1s;
+  max-width: 470px;
+
+  animation: fade-up 0.6s ease both;
+  animation-delay: 0.08s;
 }
+
+/* =========================================================
+   MOBILE BRAND
+========================================================= */
 
 .mobile-brand {
   display: none;
@@ -545,89 +1155,233 @@ onMounted(() => {
 ========================================================= */
 
 .login-card {
-  width: 100%;
-  padding: clamp(28px, 4vw, 38px);
-  background: white;
-  border: 1px solid #e4eaf0;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 15px 45px rgba(8, 38, 77, 0.08);
+  position: relative;
+
+  padding: 34px;
+
+  border: 1px solid rgba(215, 225, 234, 0.95);
+  border-radius: var(--radius-xl);
+
+  background: rgba(255, 255, 255, 0.94);
+
+  box-shadow:
+    0 24px 70px rgba(6, 27, 50, 0.09),
+    0 4px 16px rgba(6, 27, 50, 0.04);
+
+  backdrop-filter: blur(18px);
 }
 
-.login-header {
-  margin-bottom: 26px;
-}
+.login-card::before {
+  content: "";
 
-.login-eyebrow {
-  color: var(--navy-600);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}
+  position: absolute;
 
-.login-header h2 {
-  margin: 10px 0 6px;
-  color: var(--navy-900);
-  font-size: clamp(24px, 3vw, 28px);
-  font-weight: 700;
-}
+  left: 28px;
+  right: 28px;
+  top: 0;
 
-.login-header p {
-  margin: 0;
-  color: var(--slate);
-  font-size: 13.5px;
-  line-height: 1.6;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(214, 180, 93, 0.5),
+      transparent
+    );
 }
 
 /* =========================================================
-   ALERT
+   CARD TOP
+========================================================= */
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 27px;
+}
+
+.secure-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 6px 9px;
+
+  border: 1px solid #d8e9de;
+  border-radius: 999px;
+
+  background: #f3faf5;
+
+  color: #277449;
+
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.secure-dot {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #43a76b;
+
+  box-shadow:
+    0 0 0 3px rgba(67, 167, 107, 0.1);
+}
+
+.system-label {
+  color: #94a5b5;
+
+  font-size: 9px;
+  font-weight: 750;
+
+  letter-spacing: 1.2px;
+}
+
+/* =========================================================
+   LOGIN HEADER
+========================================================= */
+
+.login-header {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 14px;
+
+  margin-bottom: 25px;
+}
+
+.welcome-icon {
+  width: 44px;
+  height: 44px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #edf4f9,
+      #e6eff6
+    );
+
+  color: var(--navy-700);
+
+  box-shadow:
+    inset 0 1px 0 white;
+}
+
+.login-eyebrow {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: var(--navy-600);
+
+  font-size: 10.5px;
+  font-weight: 750;
+
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.login-header h2 {
+  margin: 0;
+
+  color: var(--navy-950);
+
+  font-size: 28px;
+  line-height: 1.15;
+
+  font-weight: 760;
+
+  letter-spacing: -0.7px;
+}
+
+.login-header p {
+  max-width: 350px;
+
+  margin: 7px 0 0;
+
+  color: var(--muted);
+
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+/* =========================================================
+   ERROR
 ========================================================= */
 
 .alert-error {
   display: flex;
   align-items: flex-start;
+
   gap: 10px;
-  margin-bottom: 20px;
-  padding: 12px;
+
+  margin-bottom: 19px;
+  padding: 12px 13px;
+
   border: 1px solid var(--danger-border);
-  border-radius: var(--radius-md);
+  border-radius: 11px;
+
   background: var(--danger-bg);
-  color: var(--danger);
 }
 
 .alert-icon {
-  width: 22px;
-  height: 22px;
-  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: #fde8e8;
-  font-size: 12px;
-  font-weight: 900;
+
+  flex-shrink: 0;
+
+  border-radius: 8px;
+
+  background: #fee9e7;
+
+  color: var(--danger);
 }
 
-.alert-error strong {
+.alert-content strong {
   display: block;
-  font-size: 13px;
+
+  color: #8f241d;
+
+  font-size: 12px;
 }
 
-.alert-error p {
+.alert-content p {
   margin: 3px 0 0;
-  color: #c0564a;
-  font-size: 12.5px;
+
+  color: #b34b42;
+
+  font-size: 11.5px;
   line-height: 1.5;
 }
 
 .alert-enter-active,
 .alert-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .alert-enter-from,
 .alert-leave-to {
   opacity: 0;
-  transform: translateY(-6px);
+  transform: translateY(-5px);
 }
 
 /* =========================================================
@@ -635,37 +1389,49 @@ onMounted(() => {
 ========================================================= */
 
 .form-group {
-  margin-bottom: 18px;
+  margin-bottom: 19px;
 }
 
 .form-group label {
   display: block;
+
   margin-bottom: 7px;
-  color: var(--ink-soft);
-  font-size: 13px;
-  font-weight: 600;
+
+  color: #344b60;
+
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .label-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+
+  gap: 10px;
 }
 
 .forgot-link {
   color: var(--navy-600);
-  font-size: 12.5px;
-  font-weight: 600;
+
+  font-size: 11px;
+  font-weight: 650;
+
   text-decoration: none;
 }
 
 .forgot-link:hover {
+  color: var(--navy-800);
   text-decoration: underline;
 }
 
+/* =========================================================
+   INPUT
+========================================================= */
+
 .input-wrapper {
   position: relative;
+
   display: flex;
   align-items: center;
 }
@@ -673,98 +1439,222 @@ onMounted(() => {
 .input-icon {
   position: absolute;
   left: 14px;
-  color: var(--slate);
-  font-size: 13px;
+
+  display: flex;
+
+  color: #8da0b2;
+
   pointer-events: none;
+
+  transition: color 0.2s ease;
 }
 
-input[type="email"],
-input[type="password"],
-input[type="text"] {
+.input-wrapper:focus-within .input-icon {
+  color: var(--navy-600);
+}
+
+.input-wrapper input {
   width: 100%;
-  height: 49px;
-  padding: 0 14px 0 40px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--ink);
-  font-family: inherit;
-  /* 16px avoids iOS Safari's auto-zoom-on-focus */
-  font-size: 16px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
+  height: 50px;
 
-input::placeholder {
-  color: #9fb3c8;
-  font-size: 13.5px;
-}
+  padding:
+    0 14px 0 42px;
 
-input:hover {
-  border-color: #bcccdc;
-}
+  border: 1px solid #d7e1e9;
+  border-radius: 10px;
 
-input:focus {
   outline: none;
-  border-color: var(--navy-600);
-  box-shadow: 0 0 0 3px rgba(27, 77, 128, 0.09);
+
+  background: #fbfcfd;
+
+  color: var(--ink);
+
+  font-family: inherit;
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-input:disabled {
-  background: #f5f7fa;
+.input-wrapper input::placeholder {
+  color: #a4b3c1;
+  font-size: 12.5px;
+}
+
+.input-wrapper input:hover {
+  border-color: #c1cfdb;
+  background: white;
+}
+
+.input-wrapper input:focus {
+  border-color: var(--navy-600);
+
+  background: white;
+
+  box-shadow: none;
+}
+
+.input-wrapper input:disabled {
+  background: #f3f6f8;
   cursor: not-allowed;
 }
 
-input[type="password"],
-input[type="text"] {
-  padding-right: 46px;
+.input-wrapper input[type="password"],
+.input-wrapper input[type="text"] {
+  padding-right: 48px;
 }
+
+/* =========================================================
+   PASSWORD BUTTON
+========================================================= */
 
 .password-toggle {
   position: absolute;
-  right: 6px;
-  width: 34px;
-  height: 34px;
+
+  right: 7px;
+
+  width: 35px;
+  height: 35px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   border: 0;
-  border-radius: 6px;
+  border-radius: 8px;
+
   background: transparent;
-  color: var(--navy-600);
+
+  color: #7890a4;
+
   cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
-.password-toggle:hover {
-  background: #edf3f8;
+.password-toggle:hover:not(:disabled) {
+  background: #edf3f7;
+  color: var(--navy-600);
 }
 
-.password-toggle:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 1px;
+.password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
+
+/* =========================================================
+   CAPS LOCK
+========================================================= */
 
 .capslock-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
   margin: 7px 0 0;
+
   color: #a15c00;
-  font-size: 12px;
-  font-weight: 600;
+
+  font-size: 11px;
+  font-weight: 650;
 }
+
+.caps-enter-active,
+.caps-leave-active {
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.caps-enter-from,
+.caps-leave-to {
+  opacity: 0;
+  transform: translateY(-3px);
+}
+
+/* =========================================================
+   REMEMBER
+========================================================= */
 
 .remember-row {
   display: flex;
   align-items: center;
+
   gap: 8px;
-  margin: 4px 0 22px;
-  color: var(--ink-soft);
-  font-size: 13px;
+
+  margin: 1px 0 22px;
+
+  color: #53687b;
+
+  font-size: 11.5px;
+
   cursor: pointer;
+  user-select: none;
 }
 
-.remember-row input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--navy-600);
-  cursor: pointer;
+.checkbox-wrapper {
+  position: relative;
+
+  width: 17px;
+  height: 17px;
+
+  display: flex;
+}
+
+.checkbox-wrapper input {
+  position: absolute;
+
+  width: 1px;
+  height: 1px;
+
+  opacity: 0;
+}
+
+.custom-checkbox {
+  width: 17px;
+  height: 17px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #c7d4df;
+  border-radius: 5px;
+
+  background: white;
+
+  color: white;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.custom-checkbox svg {
+  opacity: 0;
+}
+
+.checkbox-wrapper input:checked + .custom-checkbox {
+  border-color: var(--navy-600);
+
+  background: var(--navy-600);
+}
+
+.checkbox-wrapper input:checked + .custom-checkbox svg {
+  opacity: 1;
+}
+
+.checkbox-wrapper input:focus-visible + .custom-checkbox {
+  outline: 3px solid rgba(214, 180, 93, 0.35);
+  outline-offset: 2px;
+}
+
+.remember-text {
+  line-height: 1.3;
 }
 
 /* =========================================================
@@ -772,27 +1662,74 @@ input[type="text"] {
 ========================================================= */
 
 .login-button {
+  position: relative;
+
   width: 100%;
-  height: 50px;
+  height: 51px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   gap: 9px;
+
   border: 0;
-  border-radius: 7px;
-  background: linear-gradient(135deg, var(--navy-900), var(--navy-600));
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(--navy-950),
+      var(--navy-700)
+    );
+
   color: white;
+
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 750;
+
   cursor: pointer;
-  box-shadow: 0 7px 18px rgba(8, 38, 77, 0.15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+
+  box-shadow:
+    0 9px 22px rgba(6, 27, 50, 0.17);
+
+  overflow: hidden;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.login-button::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    linear-gradient(
+      110deg,
+      transparent 25%,
+      rgba(255, 255, 255, 0.09) 50%,
+      transparent 75%
+    );
+
+  transform: translateX(-100%);
+
+  transition: transform 0.5s ease;
+}
+
+.login-button:hover:not(:disabled)::before {
+  transform: translateX(100%);
 }
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 10px 23px rgba(8, 38, 77, 0.2);
+
+  box-shadow:
+    0 13px 27px rgba(6, 27, 50, 0.22);
 }
 
 .login-button:active:not(:disabled) {
@@ -800,39 +1737,28 @@ input[type="text"] {
 }
 
 .login-button:disabled {
-  opacity: 0.55;
+  opacity: 0.52;
+
   cursor: not-allowed;
+
   box-shadow: none;
 }
 
 .button-arrow {
-  font-size: 16px;
+  width: 27px;
+  height: 27px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 7px;
+
+  background: rgba(255, 255, 255, 0.1);
 }
 
-.spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.button-spinner {
+  animation: spin 0.75s linear infinite;
 }
 
 /* =========================================================
@@ -842,31 +1768,50 @@ input[type="text"] {
 .security-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+
+  gap: 10px;
+
   margin-top: 20px;
-  padding-top: 17px;
-  border-top: 1px solid #edf1f5;
+  padding-top: 18px;
+
+  border-top: 1px solid #edf1f4;
 }
 
-.security-icon {
-  width: 20px;
-  height: 20px;
+.security-check {
+  width: 32px;
+  height: 32px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   flex-shrink: 0;
-  border-radius: 50%;
+
+  border-radius: 9px;
+
   background: var(--success-bg);
-  color: var(--success-ink);
-  font-size: 10px;
-  font-weight: 900;
+
+  color: var(--success);
+}
+
+.security-info strong {
+  display: block;
+
+  color: #52687a;
+
+  font-size: 10.5px;
+  font-weight: 750;
 }
 
 .security-info p {
-  margin: 0;
-  color: var(--slate);
-  font-size: 12px;
-  line-height: 1.5;
+  max-width: 340px;
+
+  margin: 3px 0 0;
+
+  color: #94a3b1;
+
+  font-size: 10.5px;
+  line-height: 1.45;
 }
 
 /* =========================================================
@@ -876,151 +1821,51 @@ input[type="text"] {
 .login-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 18px;
-  color: #9aa9b8;
-  font-size: 12px;
-  text-align: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  margin-top: 17px;
+  padding: 0 4px;
+
+  color: #98a8b7;
+
+  font-size: 10px;
 }
 
-.footer-separator {
+.footer-main {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.footer-dot {
   color: var(--gold);
 }
 
-/* =========================================================
-   TABLET (≤ 1024px)
-========================================================= */
-
-@media (max-width: 1024px) {
-  .institution-panel {
-    width: 40%;
-    min-width: 320px;
-    padding: 36px;
-  }
-
-  .institution-description {
-    margin-top: 46px;
-  }
-
-  .institution-features {
-    flex-direction: column;
-    gap: 14px;
-  }
-
-  .login-section {
-    padding: 32px 24px;
-  }
+.footer-system {
+  color: #b1bdc8;
 }
 
 /* =========================================================
-   MOBILE (≤ 800px) — stacked layout
+   ANIMATIONS
 ========================================================= */
 
-@media (max-width: 800px) {
-  .login-page {
-    display: block;
-    min-height: 100dvh;
-    background: linear-gradient(180deg, #eef3f7 0%, #f7f9fb 100%);
-  }
-
-  .institution-panel {
-    display: none;
-  }
-
-  .login-section {
-    min-height: 100dvh;
-    padding: max(24px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
-  }
-
-  .login-container {
-    max-width: 440px;
-  }
-
-  .mobile-brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 22px;
-  }
-
-  .mobile-logo {
-    width: 42px;
-    height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: var(--gold);
-    color: var(--navy-900);
-    border: 2px solid var(--navy-900);
-    font-size: 12px;
-    font-weight: 900;
-  }
-
-  .mobile-brand div:last-child {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .mobile-brand strong {
-    color: var(--navy-900);
-    font-size: 13px;
-  }
-
-  .mobile-brand span {
-    margin-top: 3px;
-    color: var(--slate);
-    font-size: 11.5px;
-  }
-
-  .login-card {
-    padding: 26px 22px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(8, 38, 77, 0.08);
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-/* =========================================================
-   SMALL MOBILE (≤ 400px)
-========================================================= */
-
-@media (max-width: 400px) {
-  .login-section {
-    padding: 18px 14px;
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
   }
 
-  .login-card {
-    padding: 22px 16px;
-  }
-
-  .mobile-brand {
-    margin-bottom: 16px;
-  }
-
-  .login-header {
-    margin-bottom: 20px;
-  }
-
-  .label-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-  }
-
-  input,
-  .login-button {
-    height: 47px;
-  }
-
-  .login-footer {
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  .footer-separator {
-    display: none;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -1031,21 +1876,14 @@ input[type="text"] {
 button:focus-visible,
 input:focus-visible,
 a:focus-visible {
-  outline: 3px solid rgba(213, 180, 92, 0.45);
-  outline-offset: 2px;
+  outline: none;
 }
 
-/* =========================================================
-   MASQUER L'ICÔNE PASSWORD AUTOMATIQUE DU NAVIGATEUR
-   ========================================================= */
-
-/* Microsoft Edge / navigateurs Chromium */
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
   display: none;
 }
 
-/* Certains navigateurs */
 input[type="password"]::-webkit-credentials-auto-fill-button {
   visibility: hidden;
   pointer-events: none;
@@ -1053,4 +1891,268 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   right: 0;
 }
 
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1100px) {
+
+  .institution-panel {
+    width: 44%;
+    min-width: 400px;
+
+    padding-left: 45px;
+    padding-right: 45px;
+  }
+
+  .institution-hero h1 {
+    font-size: 40px;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-section {
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+}
+
+/* =========================================================
+   SMALL TABLET / MOBILE
+========================================================= */
+
+@media (max-width: 850px) {
+
+  .login-page {
+    display: block;
+
+    min-height: 100dvh;
+
+    overflow: auto;
+
+    background:
+      radial-gradient(
+        circle at 50% 0%,
+        rgba(27, 92, 137, 0.08),
+        transparent 30%
+      ),
+      #f4f7fa;
+  }
+
+  .institution-panel {
+    display: none;
+  }
+
+  .login-section {
+    min-height: 100dvh;
+
+    display: flex;
+    align-items: center;
+
+    padding:
+      max(24px, env(safe-area-inset-top))
+      18px
+      max(24px, env(safe-area-inset-bottom));
+  }
+
+  .login-container {
+    max-width: 460px;
+  }
+
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+
+    gap: 11px;
+
+    margin-bottom: 17px;
+  }
+
+  .mobile-brand-mark {
+    width: 43px;
+    height: 43px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 13px;
+
+    background:
+      linear-gradient(
+        145deg,
+        var(--gold-light),
+        var(--gold)
+      );
+
+    color: var(--navy-900);
+
+    font-size: 11px;
+    font-weight: 900;
+
+    box-shadow:
+      0 7px 18px rgba(6, 27, 50, 0.12);
+  }
+
+  .mobile-brand-text {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-brand-text strong {
+    color: var(--navy-900);
+
+    font-size: 12px;
+    font-weight: 750;
+  }
+
+  .mobile-brand-text span {
+    margin-top: 2px;
+
+    color: #8193a5;
+
+    font-size: 10px;
+  }
+
+  .mobile-security {
+    width: 31px;
+    height: 31px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-left: auto;
+
+    border-radius: 9px;
+
+    background: #edf8f1;
+
+    color: #28774b;
+  }
+
+  .login-card {
+    padding: 27px 22px;
+
+    border-radius: 18px;
+
+    box-shadow:
+      0 18px 50px rgba(6, 27, 50, 0.09);
+  }
+
+  .login-footer {
+    flex-direction: column;
+
+    justify-content: center;
+
+    margin-top: 14px;
+  }
+
+  .footer-system {
+    display: none;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 430px) {
+
+  .login-section {
+    padding:
+      max(18px, env(safe-area-inset-top))
+      13px
+      max(18px, env(safe-area-inset-bottom));
+  }
+
+  .login-card {
+    padding: 23px 17px;
+
+    border-radius: 16px;
+  }
+
+  .card-top {
+    margin-bottom: 23px;
+  }
+
+  .system-label {
+    display: none;
+  }
+
+  .login-header {
+    gap: 11px;
+  }
+
+  .welcome-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .login-header h2 {
+    font-size: 25px;
+  }
+
+  .login-header p {
+    font-size: 11.5px;
+  }
+
+  .form-group {
+    margin-bottom: 17px;
+  }
+
+  .label-row {
+    align-items: flex-start;
+  }
+
+  .forgot-link {
+    font-size: 10px;
+  }
+
+  .input-wrapper input {
+    height: 48px;
+  }
+
+  .login-button {
+    height: 49px;
+  }
+
+  .security-info {
+    align-items: flex-start;
+  }
+
+  .security-info p {
+    font-size: 10px;
+  }
+
+  .footer-main {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .footer-dot {
+    display: none;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .login-page *,
+  .login-page *::before,
+  .login-page *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 </style>
+```

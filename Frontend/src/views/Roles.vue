@@ -3025,17 +3025,33 @@ onMounted(async () => {
 .btn:disabled {
   opacity: .55;
   cursor: not-allowed;
+  transform: none !important;
 }
+
 
 .btn-primary {
   background: #2563eb;
   color: #fff;
-  border-color: #2563eb;
+  border: 0;
+  border-radius: 12px;
+  height: 46px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-primary:hover:not(:disabled) {
   background: #1d4ed8;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
 }
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
 
 .btn-secondary {
   background: #fff;

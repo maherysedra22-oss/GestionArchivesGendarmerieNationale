@@ -1,7 +1,14 @@
-```vue
+
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount
+} from 'vue'
+
 import { useRouter, useRoute } from 'vue-router'
+
 import {
   LayoutDashboard,
   Inbox,
@@ -14,7 +21,8 @@ import {
   Menu,
   X,
   ChevronRight,
-  Shield
+  Shield,
+  Clock
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -22,9 +30,28 @@ const route = useRoute()
 
 const mobileMenuOpen = ref(false)
 const isLoggingOut = ref(false)
-
 const utilisateur = ref(null)
 
+const heureActuelle = ref('')
+let horloge = null
+
+// =========================================================
+// HEURE ACTUELLE
+// =========================================================
+const actualiserHeure = () => {
+  heureActuelle.value = new Date().toLocaleTimeString(
+    'fr-FR',
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }
+  )
+}
+
+// =========================================================
+// CHARGEMENT UTILISATEUR
+// =========================================================
 const chargerUtilisateur = () => {
   const data =
     localStorage.getItem('utilisateur') ||
@@ -46,10 +73,24 @@ const chargerUtilisateur = () => {
   }
 }
 
+// Un seul onMounted
 onMounted(() => {
   chargerUtilisateur()
+  actualiserHeure()
+
+  horloge = setInterval(actualiserHeure, 1000)
 })
 
+onBeforeUnmount(() => {
+  if (horloge) {
+    clearInterval(horloge)
+    horloge = null
+  }
+})
+
+// =========================================================
+// INFORMATIONS UTILISATEUR
+// =========================================================
 const prenom = computed(() => {
   return utilisateur.value?.prenom || 'Utilisateur'
 })
@@ -66,6 +107,7 @@ const nomComplet = computed(() => {
 const initiales = computed(() => {
   const first = prenom.value?.charAt(0) || ''
   const last = nom.value?.charAt(0) || ''
+
   const initials = `${first}${last}`.toUpperCase()
 
   return initials || 'U'
@@ -89,6 +131,9 @@ const grade = computed(() => {
   )
 })
 
+// =========================================================
+// MENUS
+// =========================================================
 const menuItems = [
   {
     label: 'Tableau de bord',
@@ -130,43 +175,9 @@ const adminItems = [
   }
 ]
 
-const titrePage = computed(() => {
-  const titres = {
-    Dashboard: 'Tableau de bord',
-    ChangePassword: 'Changer le mot de passe',
-    CourriersArrives: 'Courriers arrivés',
-    CourriersDepart: 'Courriers départ',
-    Documents: 'Documents numériques',
-    Destinations: 'Destinations',
-    Classements: 'Classements',
-    Utilisateurs: 'Utilisateurs',
-    Roles: 'Rôles & permissions',
-    Journal: 'Journal des activités'
-  }
-
-  return titres[route.name] || 'Gestion des archives'
-})
-
-const sousTitrePage = computed(() => {
-  const sousTitres = {
-    Dashboard: 'Gestion des archives administratives',
-    ChangePassword: 'Sécurité et protection de votre compte',
-    CourriersArrives: 'Gestion des courriers reçus',
-    CourriersDepart: 'Gestion des courriers envoyés',
-    Documents: 'Gestion des documents numériques',
-    Destinations: 'Gestion des destinations des courriers',
-    Classements: 'Gestion des classements administratifs',
-    Utilisateurs: 'Gestion des comptes utilisateurs',
-    Roles: 'Gestion des rôles et des permissions',
-    Journal: 'Suivi des activités du système'
-  }
-
-  return (
-    sousTitres[route.name] ||
-    'Système de gestion des archives'
-  )
-})
-
+// =========================================================
+// ROUTES ACTIVES
+// =========================================================
 const isActiveRoute = (itemRoute) => {
   return (
     route.path === itemRoute ||
@@ -187,10 +198,16 @@ const currentPageIcon = computed(() => {
   return currentItem?.icon || LayoutDashboard
 })
 
+// =========================================================
+// MENU MOBILE
+// =========================================================
 const closeMobileMenu = () => {
   mobileMenuOpen.value = false
 }
 
+// =========================================================
+// DÉCONNEXION
+// =========================================================
 const logout = async () => {
   if (isLoggingOut.value) {
     return
@@ -237,12 +254,17 @@ const logout = async () => {
 
 <template>
   <div class="app-layout">
+
+    <!-- Overlay mobile -->
     <div
       v-if="mobileMenuOpen"
       class="mobile-overlay"
       @click="closeMobileMenu"
     ></div>
 
+    <!-- ===================================================
+         SIDEBAR
+    ==================================================== -->
     <aside
       class="sidebar"
       :class="{
@@ -250,6 +272,7 @@ const logout = async () => {
       }"
     >
       <div class="sidebar-header">
+
         <div class="brand">
           <div class="logo">
             <Shield
@@ -275,6 +298,7 @@ const logout = async () => {
       </div>
 
       <nav class="navigation">
+
         <div class="nav-section-title">
           PRINCIPAL
         </div>
@@ -308,7 +332,9 @@ const logout = async () => {
           />
         </router-link>
 
-        <div class="nav-section-title administration-title">
+        <div
+          class="nav-section-title administration-title"
+        >
           ADMINISTRATION
         </div>
 
@@ -342,7 +368,9 @@ const logout = async () => {
         </router-link>
       </nav>
 
+      <!-- Utilisateur et déconnexion -->
       <div class="sidebar-bottom">
+
         <div class="sidebar-user">
           <div class="avatar">
             {{ initiales }}
@@ -358,7 +386,6 @@ const logout = async () => {
                 :size="11"
                 :stroke-width="2.3"
               />
-
               {{ role }}
             </span>
           </div>
@@ -386,8 +413,15 @@ const logout = async () => {
       </div>
     </aside>
 
+    <!-- ===================================================
+         CONTENU PRINCIPAL
+    ==================================================== -->
     <main class="main-content">
+
+      <!-- Barre supérieure -->
       <header class="topbar">
+
+        <!-- Bouton menu mobile -->
         <button
           type="button"
           class="menu-toggle"
@@ -397,29 +431,38 @@ const logout = async () => {
           <Menu :size="20" />
         </button>
 
+        <!-- Heure + DIST/SEMF -->
         <div class="topbar-title">
-          <div class="title-with-icon">
-            <div class="page-title-icon">
-              <component
-                :is="currentPageIcon"
-                :size="19"
-                :stroke-width="2"
-              />
+          <div class="topbar-system-info">
+
+            <div class="system-clock">
+              <span class="clock-icon">
+                <Clock :size="18" />
+              </span>
+
+              <span class="clock-time">
+                {{ heureActuelle }}
+              </span>
             </div>
 
-            <div>
-              <h1>
-                {{ titrePage }}
-              </h1>
+            <div class="system-divider"></div>
 
-              <p>
-                {{ sousTitrePage }}
-              </p>
+            <div class="system-name">
+              <span class="system-label">
+                DIST / SEMF
+              </span>
+
+              <span class="system-description">
+                Gestion des courriers et documents administratifs
+              </span>
             </div>
+
           </div>
         </div>
 
+        <!-- Profil utilisateur -->
         <div class="topbar-user">
+
           <div class="topbar-user-info">
             <strong>
               {{ nomComplet }}
@@ -433,12 +476,15 @@ const logout = async () => {
           <div class="topbar-avatar">
             {{ initiales }}
           </div>
+
         </div>
       </header>
 
+      <!-- Page affichée -->
       <div class="page-content">
         <router-view />
       </div>
+
     </main>
   </div>
 </template>
@@ -448,6 +494,9 @@ const logout = async () => {
   box-sizing: border-box;
 }
 
+/* =========================================================
+   LAYOUT GLOBAL
+========================================================= */
 .app-layout {
   min-height: 100vh;
   background: #f5f7fa;
@@ -459,25 +508,33 @@ const logout = async () => {
     sans-serif;
 }
 
+/* =========================================================
+   SIDEBAR
+========================================================= */
 .sidebar {
   position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
   width: 270px;
+
   display: flex;
   flex-direction: column;
+
   background:
     linear-gradient(
       180deg,
       #061c36 0%,
       #08264d 100%
     );
+
   color: white;
   z-index: 1000;
+
   box-shadow:
     5px 0 25px
     rgba(8, 38, 77, 0.14);
+
   transition:
     transform 0.25s ease;
 }
@@ -487,6 +544,7 @@ const logout = async () => {
   display: flex;
   align-items: center;
   padding: 0 20px;
+
   border-bottom:
     1px solid
     rgba(255, 255, 255, 0.08);
@@ -501,13 +559,17 @@ const logout = async () => {
 .logo {
   width: 43px;
   height: 43px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   flex-shrink: 0;
   border-radius: 12px;
+
   background: #d5b45c;
   color: #08264d;
+
   box-shadow:
     0 5px 15px
     rgba(0, 0, 0, 0.15);
@@ -533,6 +595,9 @@ const logout = async () => {
   letter-spacing: 2px;
 }
 
+/* =========================================================
+   NAVIGATION
+========================================================= */
 .navigation {
   flex: 1;
   padding: 20px 13px;
@@ -564,16 +629,21 @@ const logout = async () => {
 .nav-item {
   position: relative;
   min-height: 45px;
+
   display: flex;
   align-items: center;
   gap: 12px;
+
   margin: 3px 0;
   padding: 10px 12px;
+
   border-radius: 9px;
   color: #dbe7f2;
   text-decoration: none;
+
   font-size: 12px;
   font-weight: 500;
+
   transition:
     background 0.2s ease,
     color 0.2s ease,
@@ -583,9 +653,9 @@ const logout = async () => {
 .nav-item:hover {
   background:
     rgba(255, 255, 255, 0.075);
+
   color: white;
-  transform:
-    translateX(2px);
+  transform: translateX(2px);
 }
 
 .nav-item.active {
@@ -595,8 +665,10 @@ const logout = async () => {
       #d5b45c,
       #e2c77b
     );
+
   color: #08264d;
   font-weight: 800;
+
   box-shadow:
     0 6px 16px
     rgba(0, 0, 0, 0.13);
@@ -604,9 +676,11 @@ const logout = async () => {
 
 .nav-icon {
   width: 22px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   flex-shrink: 0;
 }
 
@@ -621,8 +695,12 @@ const logout = async () => {
   flex-shrink: 0;
 }
 
+/* =========================================================
+   SIDEBAR USER
+========================================================= */
 .sidebar-bottom {
   padding: 15px;
+
   border-top:
     1px solid
     rgba(255, 255, 255, 0.08);
@@ -632,9 +710,12 @@ const logout = async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+
   margin-bottom: 12px;
   padding: 8px;
+
   border-radius: 10px;
+
   background:
     rgba(255, 255, 255, 0.045);
 }
@@ -642,13 +723,17 @@ const logout = async () => {
 .avatar {
   width: 39px;
   height: 39px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   flex-shrink: 0;
   border-radius: 50%;
+
   background: #d5b45c;
   color: #08264d;
+
   font-size: 11px;
   font-weight: 900;
 }
@@ -671,38 +756,42 @@ const logout = async () => {
   display: flex;
   align-items: center;
   gap: 4px;
+
   margin-top: 3px;
   color: #9fb3c8;
   font-size: 9px;
 }
 
+/* =========================================================
+   BOUTON DÉCONNEXION
+========================================================= */
 .sidebar-logout {
   width: 100%;
   min-height: 40px;
+
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.14);
+
+  border: 1px solid #ffffff;
   border-radius: 8px;
-  background:
-    rgba(255, 255, 255, 0.06);
+
+  background: rgb(217, 13, 13);
   color: white;
+
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
+
   transition:
     background 0.2s ease,
     transform 0.2s ease;
 }
 
 .sidebar-logout:hover {
-  background:
-    rgba(255, 255, 255, 0.12);
-  transform:
-    translateY(-1px);
+  background: #b91c1c;
+  transform: translateY(-1px);
 }
 
 .sidebar-logout:disabled {
@@ -711,24 +800,35 @@ const logout = async () => {
   transform: none;
 }
 
+/* =========================================================
+   CONTENU PRINCIPAL
+========================================================= */
 .main-content {
   min-height: 100vh;
   margin-left: 270px;
 }
 
+/* =========================================================
+   TOPBAR
+========================================================= */
 .topbar {
   position: sticky;
   top: 0;
   z-index: 900;
+
   min-height: 82px;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   padding: 0 32px;
+
   background:
     rgba(255, 255, 255, 0.96);
-  backdrop-filter:
-    blur(10px);
+
+  backdrop-filter: blur(10px);
+
   border-bottom:
     1px solid #e5eaf0;
 }
@@ -737,37 +837,74 @@ const logout = async () => {
   min-width: 0;
 }
 
-.title-with-icon {
+/* =========================================================
+   HEURE + DIST / SEMF
+   CSS placé hors des media queries
+========================================================= */
+.topbar-system-info {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 20px;
 }
 
-.page-title-icon {
-  width: 37px;
-  height: 37px;
+.system-clock {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #08264d;
+}
+
+.clock-icon {
+  width: 36px;
+  height: 36px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   flex-shrink: 0;
-  border-radius: 9px;
+  border-radius: 10px;
+
   background: #eef3f8;
   color: #08264d;
 }
 
-.topbar-title h1 {
-  margin: 0;
+.clock-time {
   color: #08264d;
-  font-size: 21px;
-  font-weight: 800;
+  font-size: 17px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
 }
 
-.topbar-title p {
-  margin: 4px 0 0;
+.system-divider {
+  width: 1px;
+  height: 35px;
+  flex-shrink: 0;
+  background: #dce4ed;
+}
+
+.system-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.system-label {
+  color: #08264d;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+}
+
+.system-description {
   color: #829ab1;
-  font-size: 11px;
+  font-size: 10px;
 }
 
+/* =========================================================
+   UTILISATEUR TOPBAR
+========================================================= */
 .topbar-user {
   display: flex;
   align-items: center;
@@ -794,56 +931,79 @@ const logout = async () => {
 .topbar-avatar {
   width: 43px;
   height: 43px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   flex-shrink: 0;
   border-radius: 50%;
+
   background:
     linear-gradient(
       135deg,
       #eef3f8,
       #dfe8f1
     );
+
   color: #08264d;
   font-size: 12px;
   font-weight: 900;
-  border:
-    2px solid #d5b45c;
+
+  border: 2px solid #d5b45c;
 }
 
+/* =========================================================
+   BOUTON MENU MOBILE
+========================================================= */
 .menu-toggle {
   display: none;
+
   width: 38px;
   height: 38px;
+
   align-items: center;
   justify-content: center;
+
   flex-shrink: 0;
-  border:
-    1px solid #e0e6ec;
+
+  border: 1px solid #e0e6ec;
   border-radius: 8px;
+
   background: white;
   color: #08264d;
+
   cursor: pointer;
 }
 
+/* =========================================================
+   PAGE CONTENT
+========================================================= */
 .page-content {
   width: 100%;
-  min-height:
-    calc(100vh - 82px);
+  min-height: calc(100vh - 82px);
 }
 
+/* =========================================================
+   BOUTON FERMER MENU MOBILE
+========================================================= */
 .mobile-close {
   display: none;
+
   margin-left: auto;
+
   width: 31px;
   height: 31px;
+
   align-items: center;
   justify-content: center;
+
   border: 0;
   border-radius: 7px;
+
   background:
     rgba(255, 255, 255, 0.06);
+
   color: white;
   cursor: pointer;
 }
@@ -852,6 +1012,9 @@ const logout = async () => {
   display: none;
 }
 
+/* =========================================================
+   RESPONSIVE : TABLETTE
+========================================================= */
 @media (max-width: 1100px) {
   .sidebar {
     width: 235px;
@@ -866,19 +1029,22 @@ const logout = async () => {
   }
 }
 
+/* =========================================================
+   RESPONSIVE : MOBILE
+========================================================= */
 @media (max-width: 800px) {
   .sidebar {
     width: 270px;
-    transform:
-      translateX(-100%);
+
+    transform: translateX(-100%);
+
     box-shadow:
       10px 0 35px
       rgba(0, 0, 0, 0.18);
   }
 
   .sidebar.sidebar-open {
-    transform:
-      translateX(0);
+    transform: translateX(0);
   }
 
   .main-content {
@@ -887,6 +1053,7 @@ const logout = async () => {
 
   .topbar {
     min-height: 70px;
+
     justify-content: flex-start;
     padding: 0 18px;
     gap: 12px;
@@ -901,17 +1068,20 @@ const logout = async () => {
     min-width: 0;
   }
 
-  .topbar-title h1 {
-    font-size: 17px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .topbar-system-info {
+    gap: 10px;
   }
 
-  .topbar-title p {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .clock-time {
+    font-size: 14px;
+  }
+
+  .system-label {
+    font-size: 13px;
+  }
+
+  .system-description {
+    font-size: 9px;
   }
 
   .topbar-user-info {
@@ -930,39 +1100,51 @@ const logout = async () => {
   .mobile-overlay {
     position: fixed;
     inset: 0;
+
     display: block;
+
     background:
       rgba(0, 0, 0, 0.45);
+
     z-index: 999;
-    backdrop-filter:
-      blur(2px);
+
+    backdrop-filter: blur(2px);
   }
 
   .page-content {
-    min-height:
-      calc(100vh - 70px);
+    min-height: calc(100vh - 70px);
   }
 }
 
+/* =========================================================
+   RESPONSIVE : PETIT MOBILE
+========================================================= */
 @media (max-width: 600px) {
   .topbar {
     padding: 0 14px;
   }
 
-  .topbar-title h1 {
-    font-size: 15px;
-  }
-
-  .topbar-title p {
-    font-size: 9px;
-  }
-
-  .page-title-icon {
+  .clock-icon {
     width: 33px;
     height: 33px;
   }
+
+  .clock-time {
+    font-size: 13px;
+  }
+
+  .system-label {
+    font-size: 12px;
+  }
+
+  .system-description {
+    font-size: 8px;
+  }
 }
 
+/* =========================================================
+   RESPONSIVE : TRÈS PETIT ÉCRAN
+========================================================= */
 @media (max-width: 380px) {
   .brand-text strong {
     font-size: 11px;
@@ -972,21 +1154,41 @@ const logout = async () => {
     font-size: 8px;
   }
 
-  .topbar-title p {
-    display: none;
-  }
-
   .sidebar {
     width: 255px;
   }
+
+  .system-description {
+    display: none;
+  }
+
+  .topbar-system-info {
+    gap: 8px;
+  }
+
+  .system-divider {
+    height: 28px;
+  }
+
+  .clock-time {
+    font-size: 12px;
+  }
+
+  .system-label {
+    font-size: 11px;
+    letter-spacing: 0.7px;
+  }
 }
 
+/* =========================================================
+   ACCESSIBILITÉ
+========================================================= */
 button:focus-visible,
 a:focus-visible {
   outline:
     3px solid
     rgba(213, 180, 92, 0.5);
+
   outline-offset: 2px;
 }
 </style>
-```

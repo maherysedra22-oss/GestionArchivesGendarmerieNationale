@@ -1792,11 +1792,11 @@ onBeforeUnmount(() => {
 }
 
 .card-arrive::before {
-  background: #3b82f6;
+  background: darkblue;
 }
 
 .card-depart::before {
-  background: #6366f1;
+  background: darkgreen;
 }
 
 .document-card:hover {
@@ -1825,12 +1825,12 @@ onBeforeUnmount(() => {
 }
 
 .origin-arrive {
-  color: #1d4ed8;
+  color: darkblue;
   background: #eff6ff;
 }
 
 .origin-depart {
-  color: #4f46e5;
+  color: darkgreen;
   background: #eef2ff;
 }
 

@@ -1,1988 +1,929 @@
-<script>
-export default {
-  name: 'AppDashboard'
-}
-</script>
-<script setup>
-import {
-  ref,
-  computed,
-  onMounted,
-  onBeforeUnmount,
-  nextTick,
-} from 'vue'
-
-import { useRouter } from 'vue-router'
-import api from '@/api/api'
-
-import {
-  Inbox,
-  Send,
-  FileText,
-  Users,
-  Activity,
-  Plus,
-  RefreshCw,
-  AlertTriangle,
-  Archive,
-  Clock3,
-  ShieldCheck,
-  Database,
-  Eye,
-  Pencil,
-  Trash2,
-  LogIn,
-  XCircle,
-  LoaderCircle,
-  UserPlus,
-  FolderArchive,
-  CircleDot,
-  TrendingUp,
-  PieChart,
-  LayoutDashboard,
-  ChevronRight,
-} from 'lucide-vue-next'
-
-import {
-  Chart,
-  LineController,
-  LineElement,
-  PointElement,
-  BarController,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  ArcElement,
-  DoughnutController,
-  Tooltip,
-  Legend,
-  Filler,
-} from 'chart.js'
-
-Chart.register(
-  LineController,
-  LineElement,
-  PointElement,
-  BarController,
-  BarElement,
-  CategoryScale,
-  LinearScale,
-  ArcElement,
-  DoughnutController,
-  Tooltip,
-  Legend,
-  Filler,
-)
-
-const router = useRouter()
-
-
-const utilisateur = ref(null)
-
-function chargerUtilisateurLocal() {
-  const data =
-    localStorage.getItem('utilisateur') ||
-    sessionStorage.getItem('utilisateur')
-
-  if (!data) {
-    utilisateur.value = null
-    return
-  }
-
-  try {
-    utilisateur.value = JSON.parse(data)
-  } catch (error) {
-    console.error(
-      'Erreur lors de la lecture de l’utilisateur :',
-      error,
-    )
-
-    utilisateur.value = null
-  }
-}
-
-
-const prenom = computed(() => {
-  return utilisateur.value?.prenom || 'Utilisateur'
-})
-
-const nom = computed(() => {
-  return utilisateur.value?.nom || ''
-})
-
-const role = computed(() => {
-  return (
-    utilisateur.value?.role?.nom_role ||
-    utilisateur.value?.role?.name ||
-    utilisateur.value?.role ||
-    'Administrateur'
-  )
-})
-
-const grade = computed(() => {
-  return (
-    utilisateur.value?.grade?.nom_grade ||
-    utilisateur.value?.grade?.libelle ||
-    utilisateur.value?.grade ||
-    'Grade non défini'
-  )
-})
-
-const initials = computed(() => {
-  const first =
-    prenom.value?.charAt(0) || ''
-
-  const last =
-    nom.value?.charAt(0) || ''
-
-  const value =
-    `${first}${last}`.toUpperCase()
-
-  return value || 'U'
-})
-
-
-const loading = ref(false)
-const refreshing = ref(false)
-const errorMessage = ref('')
-
-const stats = ref({
-  courriersArrives: 0,
-  courriersDepart: 0,
-  documents: 0,
-  utilisateurs: 0,
-
-  urgents: 0,
-  tresUrgents: 0,
-
-  /*
-   * IMPORTANT :
-   * archives =
-   * arrivés avec statut ARCHIVÉ
-   * +
-   * courriers départ
-   */
-  archives: 0,
-
-  /*
-   * Nombre des arrivés réellement archivés.
-   * Sert au graphique "État des courriers".
-   */
-  arrivesArchives: 0,
-
-  enCours: 0,
-  lecture: 0,
-})
-
-
-const evolution = ref({
-  labels: [],
-  arrives: [],
-  depart: [],
-})
-
-
-const statuts = ref({
-  enCours: 0,
-  lecture: 0,
-  archives: 0,
-})
-
-
-const priorites = ref({
-  normal: 0,
-  urgent: 0,
-  tresUrgent: 0,
-})
-
-
-const activites = ref([])
-
-
-const evolutionChartCanvas = ref(null)
-const statutChartCanvas = ref(null)
-const prioriteChartCanvas = ref(null)
-
-
-let evolutionChart = null
-let statutChart = null
-let prioriteChart = null
-
-
-async function chargerDashboard(options = {}) {
-  const isRefresh =
-    options.refresh === true
-
-  if (isRefresh) {
-    refreshing.value = true
-  } else {
-    loading.value = true
-  }
-
-  errorMessage.value = ''
-
-  try {
-    const result =
-      await api.get('/dashboard')
-
-    const data =
-      result?.data || {}
-
-    const statistiques =
-      data?.statistiques || {}
-
-    const courriersArrives =
-      Number(
-        statistiques.courriers_arrives,
-      ) || 0
-
-
-    const courriersDepart =
-      Number(
-        statistiques.courriers_depart,
-      ) || 0
-
-
-    const documents =
-      Number(
-        statistiques.documents,
-      ) || 0
-
-
-    const utilisateurs =
-      Number(
-        statistiques.utilisateurs,
-      ) || 0
-
-
-    const urgents =
-      Number(
-        statistiques.urgents,
-      ) || 0
-
-
-    const tresUrgents =
-      Number(
-        statistiques.tres_urgents,
-      ) || 0
-
-
-    const enCours =
-      Number(
-        data?.statuts?.en_cours ??
-        statistiques.en_cours,
-      ) || 0
-
-
-    const lecture =
-      Number(
-        data?.statuts?.lecture ??
-        statistiques.lecture,
-      ) || 0
-
-
-    /*
-     * IMPORTANT :
-     *
-     * Ce nombre représente uniquement les
-     * courriers ARRIVÉS avec statut ARCHIVÉ.
-     *
-     * On essaie d'abord data.statuts.archives,
-     * puis statistiques.archives.
-     */
-
-    const arrivesArchives =
-      Number(
-        data?.statuts?.archives ??
-        statistiques.archives,
-      ) || 0
-
-
-    /*
-     * RÈGLE MÉTIER DU DASHBOARD :
-     *
-     * Courriers archivés =
-     *
-     * arrivés ARCHIVÉS
-     * +
-     * courriers DÉPART
-     *
-     * Exemple :
-     * 2 arrivés archivés + 3 départ = 5
-     */
-
-    const totalArchives =
-      arrivesArchives +
-      courriersDepart
-
-
-    stats.value = {
-      courriersArrives,
-
-      courriersDepart,
-
-      documents,
-
-      utilisateurs,
-
-      urgents,
-
-      tresUrgents,
-
-      archives: totalArchives,
-
-      arrivesArchives,
-
-      enCours,
-
-      lecture,
-    }
-
-
-    evolution.value = {
-      labels:
-        Array.isArray(
-          data?.evolution?.labels,
-        )
-          ? data.evolution.labels
-          : [],
-
-      arrives:
-        Array.isArray(
-          data?.evolution?.arrives,
-        )
-          ? data.evolution.arrives.map(
-              (value) =>
-                Number(value) || 0,
-            )
-          : [],
-
-      depart:
-        Array.isArray(
-          data?.evolution?.depart,
-        )
-          ? data.evolution.depart.map(
-              (value) =>
-                Number(value) || 0,
-            )
-          : [],
-    }
-
-
-    statuts.value = {
-      enCours,
-
-      lecture,
-
-      /*
-       * Ici on affiche uniquement les arrivés
-       * ayant le statut ARCHIVÉ.
-       *
-       * Les courriers départ ne possèdent pas
-       * ce statut dans cette logique métier.
-       */
-
-      archives: arrivesArchives,
-    }
-
-
-    priorites.value = {
-      normal:
-        Number(
-          data?.priorites?.normal,
-        ) || 0,
-
-      urgent:
-        Number(
-          data?.priorites?.urgent ??
-          statistiques.urgents,
-        ) || 0,
-
-      tresUrgent:
-        Number(
-          data?.priorites?.tres_urgent ??
-          statistiques.tres_urgents,
-        ) || 0,
-    }
-
-
-
-    activites.value =
-      Array.isArray(data?.activites)
-        ? data.activites
-        : []
-
-
-    /*
-     * Attendre que Vue ait réellement rendu
-     * les canvas avant Chart.js.
-     */
-
-    await nextTick()
-
-    creerOuActualiserCharts()
-
-  } catch (error) {
-    console.error(
-      'Erreur chargement dashboard :',
-      error,
-    )
-
-    errorMessage.value =
-      error?.response?.data?.message ||
-      error?.message ||
-      'Impossible de charger les données du tableau de bord.'
-
-  } finally {
-    loading.value = false
-    refreshing.value = false
-  }
-}
-
-
-async function actualiserDashboard() {
-  await chargerDashboard({
-    refresh: true,
-  })
-}
-
-
-function allerVers(route) {
-  router.push(route)
-}
-
-
-const dateAujourdHui = computed(() => {
-  return new Intl.DateTimeFormat(
-    'fr-FR',
-    {
-      weekday: 'long',
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    },
-  ).format(new Date())
-})
-
-
-const totalUrgents = computed(() => {
-  return (
-    Number(stats.value.urgents || 0) +
-    Number(stats.value.tresUrgents || 0)
-  )
-})
-
-
-const totalCourriers = computed(() => {
-  return (
-    Number(stats.value.courriersArrives || 0) +
-    Number(stats.value.courriersDepart || 0)
-  )
-})
-
-
-/*
- * Taux d'archivage global :
- *
- * archives / total des courriers
- *
- * Exemple :
- * arrivés = 2
- * départ = 3
- * archives = 2 + 3 = 5
- * total = 2 + 3 = 5
- *
- * taux = 100%
- */
-
-const tauxArchivage = computed(() => {
-  const total =
-    totalCourriers.value
-
-  if (!total) {
-    return 0
-  }
-
-  return Math.min(
-    100,
-    Math.max(
-      0,
-      Math.round(
-        (Number(stats.value.archives || 0) /
-          total) *
-          100,
-      ),
-    ),
-  )
-})
-
-
-/* ======================================================
-   FORMAT DATE
-====================================================== */
-
-function formatDate(date) {
-  if (!date) {
-    return 'Date inconnue'
-  }
-
-  const parsedDate =
-    new Date(date)
-
-  if (
-    Number.isNaN(
-      parsedDate.getTime(),
-    )
-  ) {
-    return date
-  }
-
-  return new Intl.DateTimeFormat(
-    'fr-FR',
-    {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    },
-  ).format(parsedDate)
-}
-
-
-/* ======================================================
-   NORMALISER ACTION
-====================================================== */
-
-function normaliserAction(action) {
-  if (
-    action === null ||
-    action === undefined
-  ) {
-    return ''
-  }
-
-  if (typeof action === 'string') {
-    try {
-      const parsed =
-        JSON.parse(action)
-
-      if (
-        typeof parsed === 'string'
-      ) {
-        return parsed
-      }
-
-      if (
-        parsed &&
-        typeof parsed === 'object'
-      ) {
-        return (
-          parsed.action ||
-          parsed.libelle ||
-          parsed.description ||
-          JSON.stringify(parsed)
-        )
-      }
-    } catch {
-      return action
-    }
-
-    return action
-  }
-
-  if (
-    typeof action === 'object'
-  ) {
-    return (
-      action.action ||
-      action.libelle ||
-      action.description ||
-      JSON.stringify(action)
-    )
-  }
-
-  return String(action)
-}
-
-
-function getActionText(action) {
-  const value =
-    normaliserAction(action)
-
-  return (
-    value ||
-    'Opération effectuée'
-  )
-}
-
-
-/* ======================================================
-   ICÔNE ACTIVITÉ
-====================================================== */
-
-function activityIcon(action) {
-  const value =
-    normaliserAction(action)
-      .toLowerCase()
-
-  if (
-    value.includes('connexion') ||
-    value.includes('login') ||
-    value.includes('connect')
-  ) {
-    return LogIn
-  }
-
-  if (
-    value.includes('suppression') ||
-    value.includes('supprim') ||
-    value.includes('delete')
-  ) {
-    return Trash2
-  }
-
-  if (
-    value.includes('modification') ||
-    value.includes('modifi') ||
-    value.includes('update')
-  ) {
-    return Pencil
-  }
-
-  if (
-    value.includes('création') ||
-    value.includes('creation') ||
-    value.includes('ajout') ||
-    value.includes('create')
-  ) {
-    return Plus
-  }
-
-  if (
-    value.includes('lecture') ||
-    value.includes('consult') ||
-    value.includes('visual')
-  ) {
-    return Eye
-  }
-
-  if (
-    value.includes('archive') ||
-    value.includes('archivé') ||
-    value.includes('archiv')
-  ) {
-    return Archive
-  }
-
-  return Activity
-}
-
-
-/* ======================================================
-   CLASSE ACTIVITÉ
-====================================================== */
-
-function activityClass(action) {
-  const value =
-    normaliserAction(action)
-      .toLowerCase()
-
-  if (
-    value.includes('suppression') ||
-    value.includes('supprim') ||
-    value.includes('delete')
-  ) {
-    return 'activity-danger'
-  }
-
-  if (
-    value.includes('modification') ||
-    value.includes('modifi') ||
-    value.includes('update')
-  ) {
-    return 'activity-warning'
-  }
-
-  if (
-    value.includes('création') ||
-    value.includes('creation') ||
-    value.includes('ajout') ||
-    value.includes('create')
-  ) {
-    return 'activity-success'
-  }
-
-  if (
-    value.includes('connexion') ||
-    value.includes('login') ||
-    value.includes('connect')
-  ) {
-    return 'activity-info'
-  }
-
-  return 'activity-default'
-}
-
-
-/* ======================================================
-   DESTROY CHARTS
-====================================================== */
-
-function detruireCharts() {
-  if (evolutionChart) {
-    evolutionChart.destroy()
-    evolutionChart = null
-  }
-
-  if (statutChart) {
-    statutChart.destroy()
-    statutChart = null
-  }
-
-  if (prioriteChart) {
-    prioriteChart.destroy()
-    prioriteChart = null
-  }
-}
-
-
-/* ======================================================
-   CHART - EVOLUTION
-====================================================== */
-
-function creerEvolutionChart() {
-  if (!evolutionChartCanvas.value) {
-    return
-  }
-
-  if (evolutionChart) {
-    evolutionChart.destroy()
-    evolutionChart = null
-  }
-
-  const labels =
-    evolution.value.labels.length
-      ? evolution.value.labels
-      : ['Aucun']
-
-  const arrives =
-    evolution.value.arrives.length
-      ? evolution.value.arrives
-      : [0]
-
-  const depart =
-    evolution.value.depart.length
-      ? evolution.value.depart
-      : [0]
-
-  evolutionChart =
-    new Chart(
-      evolutionChartCanvas.value,
-      {
-        type: 'line',
-
-        data: {
-          labels,
-
-          datasets: [
-            {
-              label:
-                'Courriers arrivés',
-
-              data: arrives,
-
-              borderColor:
-                '#174d7d',
-
-              backgroundColor:
-                'rgba(23, 77, 125, 0.10)',
-
-              borderWidth: 2.5,
-
-              tension: 0.4,
-
-              fill: true,
-
-              pointRadius: 3,
-
-              pointHoverRadius: 5,
-            },
-
-            {
-              label:
-                'Courriers départ',
-
-              data: depart,
-
-              borderColor:
-                '#237a57',
-
-              backgroundColor:
-                'rgba(35, 122, 87, 0.07)',
-
-              borderWidth: 2.5,
-
-              tension: 0.4,
-
-              fill: true,
-
-              pointRadius: 3,
-
-              pointHoverRadius: 5,
-            },
-          ],
-        },
-
-        options: {
-          responsive: true,
-
-          maintainAspectRatio:
-            false,
-
-          interaction: {
-            mode: 'index',
-            intersect: false,
-          },
-
-          plugins: {
-            legend: {
-              position: 'top',
-
-              align: 'end',
-
-              labels: {
-                usePointStyle: true,
-
-                boxWidth: 8,
-
-                font: {
-                  size: 10,
-                },
-              },
-            },
-
-            tooltip: {
-              backgroundColor:
-                '#102a43',
-
-              padding: 10,
-
-              titleFont: {
-                size: 11,
-              },
-
-              bodyFont: {
-                size: 10,
-              },
-            },
-          },
-
-          scales: {
-            x: {
-              grid: {
-                display: false,
-              },
-
-              ticks: {
-                color: '#829ab1',
-
-                font: {
-                  size: 9,
-                },
-              },
-            },
-
-            y: {
-              beginAtZero: true,
-
-              grid: {
-                color: '#edf1f5',
-              },
-
-              ticks: {
-                color: '#829ab1',
-
-                font: {
-                  size: 9,
-                },
-
-                precision: 0,
-              },
-            },
-          },
-        },
-      },
-    )
-}
-
-
-/* ======================================================
-   CHART - STATUTS
-====================================================== */
-
-function creerStatutChart() {
-  if (!statutChartCanvas.value) {
-    return
-  }
-
-  if (statutChart) {
-    statutChart.destroy()
-    statutChart = null
-  }
-
-  statutChart =
-    new Chart(
-      statutChartCanvas.value,
-      {
-        type: 'doughnut',
-
-        data: {
-          labels: [
-            'En cours',
-            'Lecture',
-            'Archivé',
-          ],
-
-          datasets: [
-            {
-              data: [
-                Number(
-                  statuts.value.enCours,
-                ) || 0,
-
-                Number(
-                  statuts.value.lecture,
-                ) || 0,
-
-                Number(
-                  statuts.value.archives,
-                ) || 0,
-              ],
-
-              backgroundColor: [
-                '#4f7da8',
-                '#c59b3c',
-                '#3b946d',
-              ],
-
-              borderColor:
-                '#ffffff',
-
-              borderWidth: 4,
-
-              hoverOffset: 7,
-            },
-          ],
-        },
-
-        options: {
-          responsive: true,
-
-          maintainAspectRatio:
-            false,
-
-          cutout: '68%',
-
-          plugins: {
-            legend: {
-              position: 'bottom',
-
-              labels: {
-                usePointStyle: true,
-
-                boxWidth: 8,
-
-                padding: 15,
-
-                font: {
-                  size: 9,
-                },
-              },
-            },
-
-            tooltip: {
-              backgroundColor:
-                '#102a43',
-
-              padding: 10,
-            },
-          },
-        },
-      },
-    )
-}
-
-
-/* ======================================================
-   CHART - PRIORITÉS
-====================================================== */
-
-function creerPrioriteChart() {
-  if (!prioriteChartCanvas.value) {
-    return
-  }
-
-  if (prioriteChart) {
-    prioriteChart.destroy()
-    prioriteChart = null
-  }
-
-  prioriteChart =
-    new Chart(
-      prioriteChartCanvas.value,
-      {
-        type: 'bar',
-
-        data: {
-          labels: [
-            'Normal',
-            'Urgent',
-            'Très urgent',
-          ],
-
-          datasets: [
-            {
-              label:
-                'Nombre de courriers',
-
-              data: [
-                Number(
-                  priorites.value.normal,
-                ) || 0,
-
-                Number(
-                  priorites.value.urgent,
-                ) || 0,
-
-                Number(
-                  priorites.value.tresUrgent,
-                ) || 0,
-              ],
-
-              backgroundColor: [
-                '#4f7da8',
-                '#c59b3c',
-                '#bd3e3e',
-              ],
-
-              borderRadius: 6,
-
-              borderSkipped: false,
-            },
-          ],
-        },
-
-        options: {
-          responsive: true,
-
-          maintainAspectRatio:
-            false,
-
-          plugins: {
-            legend: {
-              display: false,
-            },
-
-            tooltip: {
-              backgroundColor:
-                '#102a43',
-
-              padding: 10,
-            },
-          },
-
-          scales: {
-            x: {
-              grid: {
-                display: false,
-              },
-
-              ticks: {
-                color: '#829ab1',
-
-                font: {
-                  size: 9,
-                },
-              },
-            },
-
-            y: {
-              beginAtZero: true,
-
-              grid: {
-                color: '#edf1f5',
-              },
-
-              ticks: {
-                color: '#829ab1',
-
-                precision: 0,
-
-                font: {
-                  size: 9,
-                },
-              },
-            },
-          },
-        },
-      },
-    )
-}
-
-
-/* ======================================================
-   CRÉER / ACTUALISER CHARTS
-====================================================== */
-
-function creerOuActualiserCharts() {
-  /*
-   * Vérification :
-   * si aucun canvas n'est disponible,
-   * on ne fait rien.
-   */
-
-  if (
-    !evolutionChartCanvas.value &&
-    !statutChartCanvas.value &&
-    !prioriteChartCanvas.value
-  ) {
-    return
-  }
-
-  creerEvolutionChart()
-  creerStatutChart()
-  creerPrioriteChart()
-}
-
-
-/* ======================================================
-   RESIZE
-====================================================== */
-
-function handleResize() {
-  if (evolutionChart) {
-    evolutionChart.resize()
-  }
-
-  if (statutChart) {
-    statutChart.resize()
-  }
-
-  if (prioriteChart) {
-    prioriteChart.resize()
-  }
-}
-
-
-/* ======================================================
-   MOUNT
-====================================================== */
-
-onMounted(async () => {
-  chargerUtilisateurLocal()
-
-  await chargerDashboard()
-
-  window.addEventListener(
-    'resize',
-    handleResize,
-  )
-})
-
-
-/* ======================================================
-   UNMOUNT
-====================================================== */
-
-onBeforeUnmount(() => {
-  detruireCharts()
-
-  window.removeEventListener(
-    'resize',
-    handleResize,
-  )
-})
-</script>
-
-
 <template>
-  <div class="dashboard-content">
+  <div class="dashboard">
 
-    <!-- ==================================================
+    <!-- =========================================================
          HEADER
-    =================================================== -->
+    ========================================================== -->
+    <header class="page-header">
 
-    <section class="dashboard-header">
-
-      <div class="dashboard-title">
-
-        <div class="dashboard-title-icon">
-          <LayoutDashboard :size="20" />
+      <div class="heading">
+        <div class="heading-icon">
+          <LayoutDashboard :size="23" />
         </div>
 
         <div>
-          <h1>
+          <div class="breadcrumb">
+            Accueil
+            <span>›</span>
             Tableau de bord
-          </h1>
+          </div>
+
+          <h1>Tableau de bord</h1>
 
           <p>
-            Vue générale du système de gestion documentaire
+            Vue générale de la gestion administrative des courriers et documents.
           </p>
         </div>
-
       </div>
 
+      <div class="header-tools">
 
-      <div class="dashboard-header-right">
-
-        <div class="current-date">
-
-          <Clock3 :size="14" />
-
-          <span>
-            {{ dateAujourdHui }}
-          </span>
-
+        <div class="date-chip">
+          <CalendarDays :size="17" />
+          {{ todayLabel }}
         </div>
 
+        <!-- Période -->
+        <div class="period-control">
+          <CalendarRange :size="17" />
+
+          <select
+            v-model.number="selectedMonth"
+            aria-label="Mois"
+          >
+            <option
+              v-for="m in months"
+              :key="m.value"
+              :value="m.value"
+            >
+              {{ m.label }}
+            </option>
+          </select>
+
+          <select
+            v-model.number="selectedYear"
+            aria-label="Année"
+          >
+            <option
+              v-for="y in years"
+              :key="y"
+              :value="y"
+            >
+              {{ y }}
+            </option>
+          </select>
+        </div>
 
         <button
-          class="refresh-button"
+          class="icon-button"
           type="button"
-          :disabled="refreshing || loading"
-          @click="actualiserDashboard"
+          title="Actualiser"
+          :disabled="loading"
+          @click="refreshDashboard"
         >
-
           <RefreshCw
-            :size="15"
-            :class="{ spinning: refreshing }"
+            :size="18"
+            :class="{ spinning: loading }"
           />
-
-          <span>
-            Actualiser
-          </span>
-
         </button>
 
       </div>
-
-    </section>
-
-
-    <!-- ==================================================
-         WELCOME
-    =================================================== -->
-
-    <section class="welcome-card">
-
-      <div class="welcome-content">
-
-        <div class="welcome-label">
-          ESPACE {{ role.toUpperCase() }}
-        </div>
-
-        <h2>
-          Bienvenue,
-          <span>
-            {{ prenom }}
-          </span>
-        </h2>
-
-        <p>
-          Pilotez et suivez les courriers,
-          documents et opérations administratives
-          depuis votre espace de gestion.
-        </p>
-
-        <div class="welcome-meta">
-
-          <div class="account-status">
-
-            <span class="status-dot"></span>
-
-            Compte actif
-
-          </div>
-
-          <div class="grade-badge">
-            {{ grade }}
-          </div>
-
-        </div>
-
-      </div>
+    </header>
 
 
-      <div class="welcome-emblem">
-
-        <div class="emblem-circle">
-          {{ initials }}
-        </div>
-
-        <span>
-          GENDARMERIE<br />
-          NATIONALE
-        </span>
-
-      </div>
-
-    </section>
-
-
-    <!-- ==================================================
-         ERROR
-    =================================================== -->
-
+    <!-- =========================================================
+         ERREUR
+    ========================================================== -->
     <div
       v-if="errorMessage"
-      class="dashboard-error"
+      class="error-banner"
     >
+      <AlertTriangle :size="18" />
 
-      <div class="dashboard-error-icon">
-        <XCircle :size="19" />
-      </div>
-
-      <div class="dashboard-error-content">
-
-        <strong>
-          Erreur de chargement
-        </strong>
-
-        <span>
-          {{ errorMessage }}
-        </span>
-
-      </div>
+      <span>
+        {{ errorMessage }}
+      </span>
 
       <button
         type="button"
-        @click="chargerDashboard()"
+        @click="loadDashboard"
       >
         Réessayer
       </button>
 
+      <button
+        class="close-error"
+        type="button"
+        @click="errorMessage = ''"
+      >
+        <X :size="16" />
+      </button>
     </div>
 
 
-    <!-- ==================================================
-         KPI
-    =================================================== -->
+    <!-- =========================================================
+         KPI CARDS
+    ========================================================== -->
+    <section class="kpi-grid">
 
-    <section class="section">
+      <!-- Courriers arrivés -->
+      <article class="kpi-card kpi-blue">
 
-      <div class="section-heading">
+        <div class="kpi-top">
+          <span class="kpi-icon">
+            <Inbox :size="23" />
+          </span>
 
-        <div>
-
-          <h2>
-            Vue générale
-          </h2>
-
-          <p>
-            Indicateurs principaux du système
-          </p>
-
+          <span class="kpi-tag">
+            {{ selectedMonthLabel }}
+          </span>
         </div>
 
-        <div class="section-total">
-
-          <CircleDot :size="13" />
-
-          {{ totalCourriers }}
-
-          courriers au total
-
+        <div class="kpi-label">
+          Courriers arrivés
         </div>
 
-      </div>
-
-
-      <div class="statistics">
-
-        <!-- ARRIVÉS -->
-
-        <article class="stat-card">
-
-          <div class="stat-top">
-
-            <div class="stat-icon stat-icon-arrive">
-              <Inbox :size="21" />
-            </div>
-
-            <span class="stat-badge">
-              ARRIVÉ
-            </span>
-
-          </div>
-
-          <div
-            v-if="loading"
-            class="stat-loading"
-          >
-            <LoaderCircle
-              :size="22"
-              class="spinning"
-            />
-          </div>
-
-          <div
-            v-else
-            class="stat-number"
-          >
-            {{ stats.courriersArrives }}
-          </div>
-
-          <h3>
-            Courriers arrivés
-          </h3>
-
-          <p>
-            Courriers reçus et enregistrés
-          </p>
-
-        </article>
-
-
-        <!-- DÉPART -->
-
-        <article class="stat-card">
-
-          <div class="stat-top">
-
-            <div class="stat-icon stat-icon-depart">
-              <Send :size="21" />
-            </div>
-
-            <span class="stat-badge">
-              DÉPART
-            </span>
-
-          </div>
-
-          <div
-            v-if="loading"
-            class="stat-loading"
-          >
-            <LoaderCircle
-              :size="22"
-              class="spinning"
-            />
-          </div>
-
-          <div
-            v-else
-            class="stat-number"
-          >
-            {{ stats.courriersDepart }}
-          </div>
-
-          <h3>
-            Courriers départ
-          </h3>
-
-          <p>
-            Courriers envoyés
-          </p>
-
-        </article>
-
-
-        <!-- DOCUMENTS -->
-
-        <article class="stat-card">
-
-          <div class="stat-top">
-
-            <div class="stat-icon stat-icon-document">
-              <FileText :size="21" />
-            </div>
-
-            <span class="stat-badge">
-              NUMÉRIQUE
-            </span>
-
-          </div>
-
-          <div
-            v-if="loading"
-            class="stat-loading"
-          >
-            <LoaderCircle
-              :size="22"
-              class="spinning"
-            />
-          </div>
-
-          <div
-            v-else
-            class="stat-number"
-          >
-            {{ stats.documents }}
-          </div>
-
-          <h3>
-            Documents numériques
-          </h3>
-
-          <p>
-            Documents associés aux courriers
-          </p>
-
-        </article>
-
-
-        <!-- UTILISATEURS -->
-
-        <article class="stat-card">
-
-          <div class="stat-top">
-
-            <div class="stat-icon stat-icon-users">
-              <Users :size="21" />
-            </div>
-
-            <span class="stat-badge">
-              COMPTES
-            </span>
-
-          </div>
-
-          <div
-            v-if="loading"
-            class="stat-loading"
-          >
-            <LoaderCircle
-              :size="22"
-              class="spinning"
-            />
-          </div>
-
-          <div
-            v-else
-            class="stat-number"
-          >
-            {{ stats.utilisateurs }}
-          </div>
-
-          <h3>
-            Utilisateurs
-          </h3>
-
-          <p>
-            Comptes enregistrés
-          </p>
-
-        </article>
-
-      </div>
-
-
-      <!-- MINI STATS -->
-
-      <div class="mini-statistics">
-
-        <div class="mini-stat">
-
-          <div class="mini-stat-icon mini-danger">
-            <AlertTriangle :size="17" />
-          </div>
-
-          <div>
-            <strong>
-              {{ stats.tresUrgents }}
-            </strong>
-
-            <span>
-              Très urgents
-            </span>
-          </div>
-
+        <div class="kpi-number">
+          {{ formatNumber(stats.courriers_arrives) }}
         </div>
 
-
-        <div class="mini-stat">
-
-          <div class="mini-stat-icon mini-warning">
-            <AlertTriangle :size="17" />
-          </div>
-
-          <div>
-            <strong>
-              {{ stats.urgents }}
-            </strong>
-
-            <span>
-              Urgents
-            </span>
-          </div>
-
+        <div class="kpi-foot">
+          <span class="kpi-mark">↗</span>
+          Entrants · période sélectionnée
         </div>
 
+        <Inbox
+          class="kpi-watermark"
+          :size="78"
+        />
+      </article>
 
-        <div class="mini-stat">
 
-          <div class="mini-stat-icon mini-info">
-            <Activity :size="17" />
-          </div>
+      <!-- Courriers départ -->
+      <article class="kpi-card kpi-teal">
 
-          <div>
-            <strong>
-              {{ totalUrgents }}
-            </strong>
+        <div class="kpi-top">
+          <span class="kpi-icon">
+            <Send :size="23" />
+          </span>
 
-            <span>
-              Total prioritaires
-            </span>
-          </div>
-
+          <span class="kpi-tag">
+            {{ selectedMonthLabel }}
+          </span>
         </div>
 
-
-        <div class="mini-stat">
-
-          <div class="mini-stat-icon mini-success">
-            <Archive :size="17" />
-          </div>
-
-          <div>
-            <strong>
-              {{ stats.archives }}
-            </strong>
-
-            <span>
-              Courriers archivés
-            </span>
-          </div>
-
+        <div class="kpi-label">
+          Courriers départ
         </div>
 
-      </div>
+        <div class="kpi-number">
+          {{ formatNumber(stats.courriers_depart) }}
+        </div>
+
+        <div class="kpi-foot">
+          <span class="kpi-mark">↗</span>
+          Sortants · période sélectionnée
+        </div>
+
+        <Send
+          class="kpi-watermark"
+          :size="78"
+        />
+      </article>
+
+
+      <!-- Documents -->
+      <article class="kpi-card kpi-purple">
+
+        <div class="kpi-top">
+          <span class="kpi-icon">
+            <Files :size="23" />
+          </span>
+
+          <span class="kpi-tag">
+            Système
+          </span>
+        </div>
+
+        <div class="kpi-label">
+          Documents numériques
+        </div>
+
+        <div class="kpi-number">
+          {{ formatNumber(stats.documents) }}
+        </div>
+
+        <div class="kpi-foot">
+          <span class="kpi-mark">▤</span>
+          Documents archivés
+        </div>
+
+        <Files
+          class="kpi-watermark"
+          :size="78"
+        />
+      </article>
+
+
+      <!-- En cours -->
+      <article class="kpi-card kpi-orange">
+
+        <div class="kpi-top">
+          <span class="kpi-icon">
+            <Clock3 :size="23" />
+          </span>
+
+          <span class="kpi-tag">
+            Dossiers
+          </span>
+        </div>
+
+        <div class="kpi-label">
+          En cours de traitement
+        </div>
+
+        <div class="kpi-number">
+          {{ formatNumber(status.en_cours) }}
+        </div>
+
+        <div class="kpi-foot">
+          <span class="kpi-mark">•</span>
+          Dossiers à traiter
+        </div>
+
+        <Clock3
+          class="kpi-watermark"
+          :size="78"
+        />
+      </article>
 
     </section>
 
 
-    <!-- ==================================================
-         GRAPHIQUES
-    =================================================== -->
+    <!-- =========================================================
+         GRAPHIQUES PRINCIPAUX
+    ========================================================== -->
+    <section class="main-grid">
 
-    <section class="charts-grid">
+      <!-- =======================================================
+           ÉVOLUTION
+      ======================================================== -->
+      <article class="panel evolution-panel">
 
-      <!-- ÉVOLUTION -->
+        <div class="panel-heading">
 
-      <div class="chart-card chart-large">
+          <div class="panel-title">
 
-        <div class="chart-header">
+            <span class="panel-icon blue-icon">
+              <ChartNoAxesCombined :size="19" />
+            </span>
 
-          <div>
+            <div>
+              <h2>
+                Évolution des courriers
+              </h2>
 
-            <div class="chart-title">
-              <TrendingUp :size="17" />
-
-              Évolution des courriers
+              <p>
+                Comparaison quotidienne des courriers arrivés et départ
+                pour {{ selectedMonthLabel.toLowerCase() }} {{ selectedYear }}.
+              </p>
             </div>
-
-            <p>
-              Comparaison des courriers arrivés et départ
-            </p>
 
           </div>
 
-          <span class="chart-period">
-            Activité
-          </span>
+          <div class="legend">
+
+            <span>
+              <i class="dot blue-dot"></i>
+              Arrivés
+            </span>
+
+            <span>
+              <i class="dot teal-dot"></i>
+              Départs
+            </span>
+
+          </div>
 
         </div>
 
-        <div class="chart-container evolution-container">
+
+        <!--
+          IMPORTANT :
+          Le canvas reste toujours dans le DOM.
+          On ne fait plus v-if sur le canvas.
+          Cela évite les problèmes de référence Vue + Chart.js.
+        -->
+        <div class="chart-wrap">
 
           <canvas
-            ref="evolutionChartCanvas"
-          ></canvas>
-
-        </div>
-
-      </div>
-
-
-      <!-- STATUTS -->
-
-      <div class="chart-card">
-
-        <div class="chart-header">
-
-          <div>
-
-            <div class="chart-title">
-              <PieChart :size="17" />
-
-              État des courriers
-            </div>
-
-            <p>
-              Répartition par statut
-            </p>
-
-          </div>
-
-          <span class="chart-period">
-            Arrivés
-          </span>
-
-        </div>
-
-        <div class="chart-container status-container">
-
-          <canvas
-            ref="statutChartCanvas"
-          ></canvas>
-
-        </div>
-
-      </div>
-
-
-      <!-- PRIORITÉS -->
-
-      <div class="chart-card">
-
-        <div class="chart-header">
-
-          <div>
-
-            <div class="chart-title">
-              <AlertTriangle :size="17" />
-
-              Priorités
-            </div>
-
-            <p>
-              Niveau de priorité des courriers
-            </p>
-
-          </div>
-
-          <span class="chart-period">
-            Global
-          </span>
-
-        </div>
-
-        <div class="chart-container priority-container">
-
-          <canvas
-            ref="prioriteChartCanvas"
-          ></canvas>
-
-        </div>
-
-      </div>
-
-
-      <!-- ARCHIVAGE -->
-
-      <div class="chart-card archive-summary">
-
-        <div class="chart-header">
-
-          <div>
-
-            <div class="chart-title">
-              <FolderArchive :size="17" />
-
-              Archivage
-            </div>
-
-            <p>
-              Suivi de l'état documentaire
-            </p>
-
-          </div>
-
-        </div>
-
-
-        <div class="archive-progress-area">
-
-          <div
-            class="archive-circle"
-            :style="{
-              '--archive-rate': `${tauxArchivage}%`
+            ref="evolutionCanvas"
+            class="evolution-canvas"
+            :class="{
+              'canvas-hidden': loading || !hasEvolutionData
             }"
+          ></canvas>
+
+          <!-- Loading -->
+          <div
+            v-if="loading"
+            class="chart-overlay"
           >
-
-            <strong>
-              {{ tauxArchivage }}%
-            </strong>
-
-            <span>
-              archivé
-            </span>
-
+            <span class="spinner"></span>
+            <span>Chargement des données…</span>
           </div>
 
+          <!-- Pas de données -->
+          <div
+            v-else-if="!hasEvolutionData"
+            class="chart-overlay"
+          >
+            <ChartNoAxesCombined :size="28" />
+            <span>
+              Aucune donnée disponible pour cette période.
+            </span>
+          </div>
 
-          <div class="archive-details">
+        </div>
 
-            <div class="archive-line">
-
-              <div>
-                <span class="dot dot-green"></span>
-                Archivé
-              </div>
-
-              <strong>
-                {{ stats.archives }}
-              </strong>
-
-            </div>
-
-
-            <div class="archive-line">
-
-              <div>
-                <span class="dot dot-blue"></span>
-                En cours
-              </div>
-
-              <strong>
-                {{ stats.enCours }}
-              </strong>
-
-            </div>
+      </article>
 
 
-            <div class="archive-line">
+      <!-- =======================================================
+           STATUTS
+      ======================================================== -->
+      <article class="panel status-panel">
 
-              <div>
-                <span class="dot dot-gold"></span>
-                Lecture
-              </div>
+        <div class="panel-heading">
 
-              <strong>
-                {{ stats.lecture }}
-              </strong>
+          <div class="panel-title">
 
+            <span class="panel-icon blue-icon">
+              <ChartPie :size="19" />
+            </span>
+
+            <div>
+              <h2>
+                Répartition par statut des courriers arrivés
+              </h2>
+
+              <p>
+                État des courriers arrivés pour la période.
+              </p>
             </div>
 
           </div>
 
         </div>
 
-      </div>
+
+        <div class="status-layout">
+
+          <div class="donut-wrap">
+
+            <canvas ref="statusCanvas"></canvas>
+
+            <div class="donut-center">
+              <strong>
+                {{ formatNumber(statusTotal) }}
+              </strong>
+
+              <span>
+                Total
+              </span>
+            </div>
+
+          </div>
+
+
+          <div class="status-legend">
+
+            <div class="status-row">
+              <i class="dot blue-dot"></i>
+
+              <span>
+                En cours
+              </span>
+
+              <b>
+                {{ statusPercent(status.en_cours) }}%
+              </b>
+
+              <small>
+                {{ formatNumber(status.en_cours) }}
+              </small>
+            </div>
+
+
+            <div class="status-row">
+              <i class="dot teal-dot"></i>
+
+              <span>
+                Lecture
+              </span>
+
+              <b>
+                {{ statusPercent(status.lecture) }}%
+              </b>
+
+              <small>
+                {{ formatNumber(status.lecture) }}
+              </small>
+            </div>
+
+
+            <div class="status-row">
+              <i class="dot purple-dot"></i>
+
+              <span>
+                Archivé
+              </span>
+
+              <b>
+                {{ statusPercent(status.archives) }}%
+              </b>
+
+              <small>
+                {{ formatNumber(status.archives) }}
+              </small>
+            </div>
+
+          </div>
+
+        </div>
+
+      </article>
 
     </section>
 
 
-    <!-- ==================================================
-         ACTIVITÉS + ACCÈS RAPIDES
-    =================================================== -->
+    <!-- =========================================================
+         PRIORITÉS
+    ========================================================== -->
+    <section class="lower-grid">
 
-    <section class="dashboard-grid">
+      <!-- =======================================================
+           PRIORITÉS DÉPART
+      ======================================================== -->
+      <article class="panel priority-stats-panel">
 
-      <!-- ACTIVITÉS -->
+        <div class="panel-heading">
 
-      <div class="panel">
+          <div class="panel-title">
 
-        <div class="panel-header">
+            <span class="panel-icon orange-icon">
+              <Flag :size="19" />
+            </span>
 
-          <div>
+            <div>
 
-            <h2>
-              Activités récentes
-            </h2>
+              <h2>
+                Priorités des courriers départ
+              </h2>
 
-            <p>
-              Dernières opérations effectuées
-            </p>
+              <p>
+                Répartition des courriers sortants par niveau de priorité —
+                {{ selectedMonthLabel }} {{ selectedYear }}.
+              </p>
+
+            </div>
 
           </div>
-
-          <span class="panel-icon">
-            <Activity :size="16" />
-          </span>
 
         </div>
 
 
         <div
           v-if="loading"
-          class="activity-loading"
+          class="chart-state"
+          style="min-height:180px"
+        >
+          <span class="spinner"></span>
+          Chargement…
+        </div>
+
+
+        <div
+          v-else-if="priorityDepartTotal === 0"
+          class="chart-state"
+          style="min-height:180px"
+        >
+          Aucune donnée de priorité pour cette période.
+        </div>
+
+
+        <div
+          v-else
+          class="priority-circles"
         >
 
-          <LoaderCircle
-            :size="28"
-            class="spinning"
-          />
+          <!-- Normal -->
+          <div class="prio-circle-card">
+
+            <div class="prio-ring">
+
+              <svg
+                viewBox="0 0 100 100"
+                class="prio-svg"
+              >
+
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  class="ring-bg"
+                />
+
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  class="ring-fill ring-normal"
+                  :stroke-dasharray="`${priorityDepartPercent(priorityDepart.normal) * 2.513} 251.3`"
+                />
+
+              </svg>
+
+              <div class="prio-ring-inner">
+
+                <strong>
+                  {{ priorityDepartPercent(priorityDepart.normal) }}%
+                </strong>
+
+                <span>
+                  {{ formatNumber(priorityDepart.normal) }}
+                </span>
+
+              </div>
+
+            </div>
+
+            <div class="prio-label">
+              <i class="dot teal-dot"></i>
+              <span>Normal</span>
+            </div>
+
+            <div class="prio-count">
+              {{ formatNumber(priorityDepart.normal) }} courrier(s)
+            </div>
+
+          </div>
+
+
+          <!-- Urgent -->
+          <div class="prio-circle-card">
+
+            <div class="prio-ring">
+
+              <svg
+                viewBox="0 0 100 100"
+                class="prio-svg"
+              >
+
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  class="ring-bg"
+                />
+
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  class="ring-fill ring-urgent"
+                  :stroke-dasharray="`${priorityDepartPercent(priorityDepart.urgent) * 2.513} 251.3`"
+                />
+
+              </svg>
+
+              <div class="prio-ring-inner">
+
+                <strong>
+                  {{ priorityDepartPercent(priorityDepart.urgent) }}%
+                </strong>
+
+                <span>
+                  {{ formatNumber(priorityDepart.urgent) }}
+                </span>
+
+              </div>
+
+            </div>
+
+            <div class="prio-label">
+              <i class="dot orange-dot"></i>
+              <span>Urgent</span>
+            </div>
+
+            <div class="prio-count">
+              {{ formatNumber(priorityDepart.urgent) }} courrier(s)
+            </div>
+
+          </div>
+
+
+          <!-- Très urgent -->
+          <div class="prio-circle-card">
+
+            <div class="prio-ring">
+
+              <svg
+                viewBox="0 0 100 100"
+                class="prio-svg"
+              >
+
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  class="ring-bg"
+                />
+
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  class="ring-fill ring-tres-urgent"
+                  :stroke-dasharray="`${priorityDepartPercent(priorityDepart.tres_urgent) * 2.513} 251.3`"
+                />
+
+              </svg>
+
+              <div class="prio-ring-inner">
+
+                <strong>
+                  {{ priorityDepartPercent(priorityDepart.tres_urgent) }}%
+                </strong>
+
+                <span>
+                  {{ formatNumber(priorityDepart.tres_urgent) }}
+                </span>
+
+              </div>
+
+            </div>
+
+            <div class="prio-label">
+              <i class="dot red-dot"></i>
+              <span>Très urgent</span>
+            </div>
+
+            <div class="prio-count">
+              {{ formatNumber(priorityDepart.tres_urgent) }} courrier(s)
+            </div>
+
+          </div>
+
+
+          <!-- Total -->
+          <div class="prio-total-card">
+
+            <div class="prio-total-icon">
+              <Send :size="26" />
+            </div>
+
+            <div class="prio-total-info">
+
+              <strong>
+                {{ formatNumber(priorityDepartTotal) }}
+              </strong>
+
+              <span>
+                Total départ
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <!-- Barre comparative -->
+        <div
+          v-if="!loading && priorityDepartTotal > 0"
+          class="prio-bar-section"
+        >
+
+          <div class="prio-bar-label">
+
+            <span>
+              <i class="dot teal-dot"></i>
+              Normal
+            </span>
+
+            <span>
+              <i class="dot orange-dot"></i>
+              Urgent
+            </span>
+
+            <span>
+              <i class="dot red-dot"></i>
+              Très urgent
+            </span>
+
+          </div>
+
+          <div class="prio-bar-track">
+
+            <div
+              class="prio-bar-seg prio-seg-normal"
+              :style="{
+                width: priorityDepartPercent(priorityDepart.normal) + '%'
+              }"
+            ></div>
+
+            <div
+              class="prio-bar-seg prio-seg-urgent"
+              :style="{
+                width: priorityDepartPercent(priorityDepart.urgent) + '%'
+              }"
+            ></div>
+
+            <div
+              class="prio-bar-seg prio-seg-tres-urgent"
+              :style="{
+                width: priorityDepartPercent(priorityDepart.tres_urgent) + '%'
+              }"
+            ></div>
+
+          </div>
+
+        </div>
+
+      </article>
+
+
+      <!-- =======================================================
+           PRIORITÉS ARRIVÉS
+      ======================================================== -->
+      <article class="panel priority-arrive-panel">
+
+        <div class="panel-heading">
+
+          <div class="panel-title">
+
+            <span class="panel-icon blue-icon">
+              <Flag :size="19" />
+            </span>
+
+            <div>
+
+              <h2>
+                Priorités des courriers arrivés
+              </h2>
+
+              <p>
+                Nombre de courriers entrants par niveau de priorité —
+                {{ selectedMonthLabel }} {{ selectedYear }}.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="priority-chart-wrap">
+
+          <canvas
+            ref="priorityCanvas"
+            :class="{
+              'canvas-hidden': loading || priorityTotal === 0
+            }"
+          ></canvas>
+
+          <div
+            v-if="loading"
+            class="chart-overlay"
+          >
+            <span class="spinner"></span>
+            Chargement des priorités…
+          </div>
+
+          <div
+            v-else-if="priorityTotal === 0"
+            class="chart-overlay"
+          >
+            Aucune priorité renseignée pour cette période.
+          </div>
+
+        </div>
+
+
+        <div class="priority-summary">
 
           <span>
-            Chargement des activités...
+            <i class="dot teal-dot"></i>
+            Normal
+            <b>{{ formatNumber(priority.normal) }}</b>
           </span>
+
+          <span>
+            <i class="dot orange-dot"></i>
+            Urgent
+            <b>{{ formatNumber(priority.urgent) }}</b>
+          </span>
+
+          <span>
+            <i class="dot red-dot"></i>
+            Très urgent
+            <b>{{ formatNumber(priority.tres_urgent) }}</b>
+          </span>
+
+        </div>
+
+      </article>
+
+    </section>
+
+
+    <!-- =========================================================
+         ACTIVITÉS + ACCÈS RAPIDE
+    ========================================================== -->
+    <section class="bottom-grid">
+
+      <!-- Activités -->
+      <article class="panel activity-panel">
+
+        <div class="panel-heading">
+
+          <div class="panel-title">
+
+            <span class="panel-icon blue-icon">
+              <Activity :size="19" />
+            </span>
+
+            <div>
+
+              <h2>
+                Activités récentes
+              </h2>
+
+              <p>
+                Les 3 dernières opérations enregistrées dans le système.
+              </p>
+
+            </div>
+
+          </div>
+
+          <button
+            class="text-button"
+            type="button"
+            @click="goToActivities"
+          >
+            Voir tout
+            <ArrowRight :size="16" />
+          </button>
 
         </div>
 
 
         <div
-          v-else-if="activites.length"
-          class="activities-list"
+          v-if="recentActivities.length"
+          class="activity-list"
         >
 
           <div
-            v-for="(activite, index) in activites"
-            :key="
-              activite.id ||
-              activite.id_activite ||
-              index
-            "
-            class="activity-item"
+            v-for="(item, index) in recentActivities"
+            :key="item.id ?? index"
+            class="activity-row"
           >
 
-            <div
-              class="activity-icon"
-              :class="
-                activityClass(
-                  activite.action,
-                )
-              "
+            <span
+              class="activity-symbol"
+              :class="activityClass(item)"
             >
-
               <component
-                :is="
-                  activityIcon(
-                    activite.action,
-                  )
-                "
-                :size="16"
+                :is="activityIcon(item)"
+                :size="17"
               />
+            </span>
 
-            </div>
-
-
-            <div class="activity-content">
+            <div class="activity-copy">
 
               <strong>
-                {{ getActionText(activite.action) }}
+                {{ item.action || 'Activité système' }}
               </strong>
 
               <span>
-                {{
-                  activite.utilisateur ||
-                  activite.nom_utilisateur ||
-                  'Utilisateur système'
-                }}
+                {{ item.description || activityDescription(item) }}
               </span>
 
-              <small>
-                {{
-                  formatDate(
-                    activite.date ||
-                    activite.created_at ||
-                    activite.createdAt,
-                  )
-                }}
+              <small
+                v-if="item.utilisateur || item.nom_utilisateur"
+              >
+                <UserRound :size="12" />
+
+                {{ item.utilisateur || item.nom_utilisateur }}
+
+                <template
+                  v-if="item.table || item.table_concernee"
+                >
+                  ·
+                  {{ formatTable(item.table || item.table_concernee) }}
+                </template>
+
               </small>
 
             </div>
+
+            <time>
+              {{ formatTime(item.date || item.created_at) }}
+            </time>
 
           </div>
 
@@ -1993,1005 +934,3438 @@ onBeforeUnmount(() => {
           v-else
           class="empty-state"
         >
+          <Activity :size="26" />
 
-          <div class="empty-state-icon">
-            <Activity :size="20" />
-          </div>
-
-          <h3>
+          <strong>
             Aucune activité récente
-          </h3>
+          </strong>
 
-          <p>
-            Les opérations effectuées dans
-            le système apparaîtront ici.
-          </p>
-
+          <span>
+            Les dernières opérations apparaîtront ici.
+          </span>
         </div>
 
-      </div>
+      </article>
 
 
-      <!-- ACCÈS RAPIDES -->
+      <!-- Accès rapide -->
+      <article class="panel links-panel">
 
-      <div class="panel">
+        <div class="panel-heading">
 
-        <div class="panel-header">
+          <div class="panel-title">
 
-          <div>
+            <span class="panel-icon blue-icon">
+              <ArrowRight :size="19" />
+            </span>
 
-            <h2>
-              Accès rapides
-            </h2>
+            <div>
 
-            <p>
-              Actions fréquentes
-            </p>
+              <h2>
+                Accès rapide
+              </h2>
+
+              <p>
+                Navigation directe vers les modules principaux.
+              </p>
+
+            </div>
 
           </div>
 
-          <span class="panel-icon">
-            <Plus :size="16" />
-          </span>
-
         </div>
 
 
-        <div class="quick-actions">
+        <div class="quick-links">
 
           <button
-            class="quick-action"
             type="button"
-            @click="
-              allerVers('/courriers-arrives')
-            "
+            @click="goTo('/courriers-arrives')"
           >
 
-            <span class="quick-icon">
-              <Inbox :size="17" />
+            <span class="quick-icon quick-blue">
+              <Inbox :size="18" />
             </span>
 
-            <span class="quick-text">
-
-              <strong>
-                Courrier arrivé
-              </strong>
-
-              <small>
-                Enregistrer un courrier reçu
-              </small>
-
+            <span>
+              <b>Courriers arrivés</b>
+              <small>Consulter les courriers entrants</small>
             </span>
 
-            <span class="quick-arrow">
-              <ChevronRight :size="16" />
-            </span>
+            <ArrowRight :size="16" />
 
           </button>
 
 
           <button
-            class="quick-action"
             type="button"
-            @click="
-              allerVers('/courriers-depart')
-            "
+            @click="goTo('/courriers-depart')"
           >
 
-            <span class="quick-icon">
-              <Send :size="17" />
+            <span class="quick-icon quick-teal">
+              <Send :size="18" />
             </span>
 
-            <span class="quick-text">
-
-              <strong>
-                Courrier départ
-              </strong>
-
-              <small>
-                Enregistrer un courrier envoyé
-              </small>
-
+            <span>
+              <b>Courriers départ</b>
+              <small>Consulter les courriers sortants</small>
             </span>
 
-            <span class="quick-arrow">
-              <ChevronRight :size="16" />
-            </span>
+            <ArrowRight :size="16" />
 
           </button>
 
 
           <button
-            class="quick-action"
             type="button"
-            @click="
-              allerVers('/documents')
-            "
+            @click="goTo('/documents')"
           >
 
-            <span class="quick-icon">
-              <FileText :size="17" />
+            <span class="quick-icon quick-purple">
+              <FileText :size="18" />
             </span>
 
-            <span class="quick-text">
-
-              <strong>
-                Documents numériques
-              </strong>
-
-              <small>
-                Consulter les documents archivés
-              </small>
-
+            <span>
+              <b>Documents numériques</b>
+              <small>Accéder aux pièces jointes</small>
             </span>
 
-            <span class="quick-arrow">
-              <ChevronRight :size="16" />
-            </span>
+            <ArrowRight :size="16" />
 
           </button>
 
 
           <button
-            class="quick-action"
             type="button"
-            @click="
-              allerVers('/utilisateurs')
-            "
+            @click="goTo('/journal')"
           >
 
-            <span class="quick-icon">
-              <UserPlus :size="17" />
+            <span class="quick-icon quick-orange">
+              <Activity :size="18" />
             </span>
 
-            <span class="quick-text">
-
-              <strong>
-                Utilisateurs
-              </strong>
-
-              <small>
-                Gérer les comptes utilisateurs
-              </small>
-
+            <span>
+              <b>Journal des activités</b>
+              <small>Historique des opérations</small>
             </span>
 
-            <span class="quick-arrow">
-              <ChevronRight :size="16" />
-            </span>
+            <ArrowRight :size="16" />
 
           </button>
 
         </div>
 
-      </div>
+      </article>
 
     </section>
 
 
-    <!-- ==================================================
-         INFORMATION
-    =================================================== -->
+    <!-- =========================================================
+         FOOTER
+    ========================================================== -->
+    <footer class="dashboard-footer">
 
-    <section class="information">
+      <span>
+        <ShieldCheck :size="15" />
+        Gestion des archives · DIST / SEMF
+      </span>
 
-      <div class="information-icon">
-        <ShieldCheck :size="22" />
-      </div>
+      <span>
+        Mis à jour : {{ lastUpdated || '—' }}
+      </span>
 
-      <div class="information-content">
-
-        <h2>
-          Système de gestion des archives
-        </h2>
-
-        <p>
-          Cette plateforme permet de centraliser,
-          organiser et consulter les courriers et
-          documents administratifs de la Gendarmerie
-          Nationale dans un environnement sécurisé.
-        </p>
-
-      </div>
-
-      <div class="information-security">
-
-        <Database :size="18" />
-
-        <span>
-          Système sécurisé
-        </span>
-
-      </div>
-
-    </section>
+    </footer>
 
   </div>
 </template>
 
 
+<script setup>
+import {
+  ref,
+  computed,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+  watch
+} from 'vue'
+
+import { useRouter } from 'vue-router'
+import api from '@/api/api'
+
+import {
+  Chart,
+  LineController,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  DoughnutController,
+  ArcElement,
+  BarController,
+  BarElement,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+
+import {
+  LayoutDashboard,
+  CalendarDays,
+  CalendarRange,
+  RefreshCw,
+  X,
+  AlertTriangle,
+  Inbox,
+  Send,
+  Files,
+  Clock3,
+  ChartNoAxesCombined,
+  ChartPie,
+  Activity,
+  ArrowRight,
+  UserRound,
+  Flag,
+  FileText,
+  ShieldCheck,
+  Database,
+  Plus,
+  Pencil,
+  Trash2,
+  LogIn,
+  LogOut,
+  UserPlus,
+  Settings
+} from 'lucide-vue-next'
+
+
+/* ============================================================
+   CHART.JS
+============================================================ */
+
+Chart.register(
+  LineController,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  DoughnutController,
+  ArcElement,
+  BarController,
+  BarElement,
+  Tooltip,
+  Legend,
+  Filler
+)
+
+
+/* ============================================================
+   ROUTER
+============================================================ */
+
+const router = useRouter()
+
+
+/* ============================================================
+   ÉTAT GÉNÉRAL
+============================================================ */
+
+const loading = ref(false)
+const errorMessage = ref('')
+
+
+/* ============================================================
+   CANVAS
+============================================================ */
+
+const evolutionCanvas = ref(null)
+const statusCanvas = ref(null)
+const priorityCanvas = ref(null)
+
+
+/* ============================================================
+   INSTANCES CHART.JS
+============================================================ */
+
+let evolutionChart = null
+let statusChart = null
+let priorityChart = null
+
+
+/* ============================================================
+   PÉRIODE
+============================================================ */
+
+const initialDate = new Date()
+
+const selectedMonth = ref(initialDate.getMonth() + 1)
+const selectedYear = ref(initialDate.getFullYear())
+
+
+const months = [
+  { value: 1, label: 'Janvier' },
+  { value: 2, label: 'Février' },
+  { value: 3, label: 'Mars' },
+  { value: 4, label: 'Avril' },
+  { value: 5, label: 'Mai' },
+  { value: 6, label: 'Juin' },
+  { value: 7, label: 'Juillet' },
+  { value: 8, label: 'Août' },
+  { value: 9, label: 'Septembre' },
+  { value: 10, label: 'Octobre' },
+  { value: 11, label: 'Novembre' },
+  { value: 12, label: 'Décembre' }
+]
+
+
+const years = Array.from(
+  { length: 7 },
+  (_, i) => initialDate.getFullYear() - 5 + i
+)
+
+
+const selectedMonthLabel = computed(() => {
+  return (
+    months.find(
+      month => month.value === selectedMonth.value
+    )?.label || ''
+  )
+})
+
+
+const todayLabel = new Intl.DateTimeFormat(
+  'fr-FR',
+  {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  }
+).format(initialDate)
+
+
+/* ============================================================
+   STATISTIQUES
+============================================================ */
+
+const stats = ref({
+  courriers_arrives: 0,
+  courriers_depart: 0,
+  documents: 0,
+  utilisateurs: 0
+})
+
+
+const status = ref({
+  en_cours: 0,
+  lecture: 0,
+  archives: 0
+})
+
+
+const priority = ref({
+  normal: 0,
+  urgent: 0,
+  tres_urgent: 0
+})
+
+
+const priorityDepart = ref({
+  normal: 0,
+  urgent: 0,
+  tres_urgent: 0
+})
+
+
+/* ============================================================
+   ACTIVITÉS
+============================================================ */
+
+const activities = ref([])
+
+
+const recentActivities = computed(() => {
+  return activities.value.slice(0, 3)
+})
+
+
+/* ============================================================
+   ÉVOLUTION
+============================================================ */
+
+const monthlyLabels = ref([])
+const monthlyArrives = ref([])
+const monthlyDeparts = ref([])
+
+
+const hasEvolutionData = computed(() => {
+  return (
+    monthlyArrives.value.some(
+      value => Number(value) > 0
+    ) ||
+    monthlyDeparts.value.some(
+      value => Number(value) > 0
+    )
+  )
+})
+
+
+/* ============================================================
+   TOTAUX
+============================================================ */
+
+const statusTotal = computed(() => {
+  return (
+    Number(status.value.en_cours) +
+    Number(status.value.lecture) +
+    Number(status.value.archives)
+  )
+})
+
+
+const priorityTotal = computed(() => {
+  return (
+    Number(priority.value.normal) +
+    Number(priority.value.urgent) +
+    Number(priority.value.tres_urgent)
+  )
+})
+
+
+const priorityDepartTotal = computed(() => {
+  return (
+    Number(priorityDepart.value.normal) +
+    Number(priorityDepart.value.urgent) +
+    Number(priorityDepart.value.tres_urgent)
+  )
+})
+
+
+/* ============================================================
+   MISE À JOUR
+============================================================ */
+
+const lastUpdated = ref('')
+
+
+/* ============================================================
+   FORMATAGE
+============================================================ */
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('fr-FR').format(
+    Number(value) || 0
+  )
+}
+
+
+function statusPercent(value) {
+  return statusTotal.value
+    ? Math.round(
+        (Number(value || 0) / statusTotal.value) * 100
+      )
+    : 0
+}
+
+
+function priorityDepartPercent(value) {
+  return priorityDepartTotal.value
+    ? Math.round(
+        (Number(value || 0) /
+          priorityDepartTotal.value) *
+          100
+      )
+    : 0
+}
+
+
+function formatTime(value) {
+  if (!value) return ''
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  return new Intl.DateTimeFormat(
+    'fr-FR',
+    {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit'
+    }
+  ).format(date)
+}
+
+
+function formatTable(value) {
+
+  const names = {
+    courriers_arrives: 'Courriers arrivés',
+    courriers_depart: 'Courriers départ',
+    utilisateurs: 'Utilisateurs',
+    documents_numeriques: 'Documents',
+    journal_activites: 'Journal des activités'
+  }
+
+  return (
+    names[String(value || '').toLowerCase()] ||
+    String(value || '').replaceAll('_', ' ')
+  )
+}
+
+
+/* ============================================================
+   ACTIVITÉS
+============================================================ */
+
+function activityDescription(item) {
+
+  const table = formatTable(
+    item.table_concernee || item.table
+  )
+
+  const reference =
+    item.reference_objet ||
+    item.id_enregistrement
+
+  return (
+    [
+      table,
+      reference
+        ? `Référence : ${reference}`
+        : ''
+    ]
+      .filter(Boolean)
+      .join(' · ') ||
+    'Opération enregistrée'
+  )
+}
+
+
+function activityIcon(item) {
+
+  const action = String(
+    item.action || ''
+  ).toLowerCase()
+
+  if (
+    action.includes('connexion') ||
+    action.includes('login')
+  ) {
+    return LogIn
+  }
+
+  if (
+    action.includes('déconnexion') ||
+    action.includes('logout')
+  ) {
+    return LogOut
+  }
+
+  if (action.includes('supprim')) {
+    return Trash2
+  }
+
+  if (
+    action.includes('modifi') ||
+    action.includes('mis à jour')
+  ) {
+    return Pencil
+  }
+
+  if (
+    action.includes('cré') ||
+    action.includes('ajout')
+  ) {
+    return Plus
+  }
+
+  if (action.includes('utilisateur')) {
+    return UserPlus
+  }
+
+  if (action.includes('paramètre')) {
+    return Settings
+  }
+
+  return Database
+}
+
+
+function activityClass(item) {
+
+  const action = String(
+    item.action || ''
+  ).toLowerCase()
+
+  if (action.includes('supprim')) {
+    return 'symbol-red'
+  }
+
+  if (
+    action.includes('cré') ||
+    action.includes('ajout')
+  ) {
+    return 'symbol-teal'
+  }
+
+  if (action.includes('connexion')) {
+    return 'symbol-purple'
+  }
+
+  return 'symbol-blue'
+}
+
+
+/* ============================================================
+   NAVIGATION
+============================================================ */
+
+function goTo(path) {
+  router.push(path)
+}
+
+
+function goToActivities() {
+  router.push('/journal')
+}
+
+
+/* ============================================================
+   NETTOYAGE DES CHARTS
+============================================================ */
+
+function destroyCharts() {
+
+  if (evolutionChart) {
+    evolutionChart.destroy()
+    evolutionChart = null
+  }
+
+  if (statusChart) {
+    statusChart.destroy()
+    statusChart = null
+  }
+
+  if (priorityChart) {
+    priorityChart.destroy()
+    priorityChart = null
+  }
+}
+
+
+/* ============================================================
+   RENDU DES GRAPHIQUES
+============================================================ */
+
+function renderCharts() {
+
+  console.log('======================================')
+  console.log('🎨 RENDU DES GRAPHIQUES')
+  console.log(
+    'Période :',
+    selectedMonth.value,
+    selectedYear.value
+  )
+  console.log(
+    'Labels :',
+    [...monthlyLabels.value]
+  )
+  console.log(
+    'Arrivés :',
+    [...monthlyArrives.value]
+  )
+  console.log(
+    'Départs :',
+    [...monthlyDeparts.value]
+  )
+  console.log('======================================')
+
+
+  /*
+   * Toujours détruire les anciennes instances
+   * AVANT d'en créer de nouvelles.
+   */
+  destroyCharts()
+
+
+  /* ==========================================================
+     ÉVOLUTION DES COURRIERS
+  =========================================================== */
+
+  if (
+    evolutionCanvas.value &&
+    hasEvolutionData.value
+  ) {
+
+    const labels = [
+      ...monthlyLabels.value
+    ]
+
+    const arrives =
+      monthlyArrives.value.map(
+        value => Number(value) || 0
+      )
+
+    const departs =
+      monthlyDeparts.value.map(
+        value => Number(value) || 0
+      )
+
+
+    evolutionChart = new Chart(
+      evolutionCanvas.value,
+      {
+        type: 'line',
+
+        data: {
+          labels,
+
+          datasets: [
+
+            {
+              label: 'Courriers arrivés',
+
+              data: arrives,
+
+              borderColor: '#1769e8',
+
+              backgroundColor:
+                'rgba(23, 105, 232, 0.10)',
+
+              fill: true,
+
+              tension: 0.38,
+
+              borderWidth: 3,
+
+              pointRadius: 3,
+
+              pointHoverRadius: 6,
+
+              pointHitRadius: 12
+            },
+
+
+            {
+              label: 'Courriers départ',
+
+              data: departs,
+
+              borderColor: '#10aa9b',
+
+              backgroundColor:
+                'rgba(16, 170, 155, 0.08)',
+
+              fill: true,
+
+              tension: 0.38,
+
+              borderWidth: 3,
+
+              pointRadius: 3,
+
+              pointHoverRadius: 6,
+
+              pointHitRadius: 12
+            }
+
+          ]
+        },
+
+
+        options: {
+
+          responsive: true,
+
+          maintainAspectRatio: false,
+
+          animation: {
+            duration: 450
+          },
+
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+
+          plugins: {
+
+            legend: {
+              display: false
+            },
+
+            tooltip: {
+
+              backgroundColor: '#102b58',
+
+              padding: 12,
+
+              displayColors: true
+
+            }
+
+          },
+
+
+          scales: {
+
+            x: {
+
+              grid: {
+                color:
+                  'rgba(128, 153, 190, 0.13)'
+              },
+
+              ticks: {
+
+                color: '#6c7f9f',
+
+                maxRotation: 0,
+
+                autoSkip: true,
+
+                maxTicksLimit: 15
+
+              }
+
+            },
+
+
+            y: {
+
+              beginAtZero: true,
+
+              grid: {
+                color:
+                  'rgba(128, 153, 190, 0.16)'
+              },
+
+              ticks: {
+
+                precision: 0,
+
+                color: '#6c7f9f'
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+    )
+
+    console.log(
+      '✅ Graphique évolution créé'
+    )
+  }
+
+
+  /* ==========================================================
+     STATUTS
+  =========================================================== */
+
+  if (statusCanvas.value) {
+
+    statusChart = new Chart(
+      statusCanvas.value,
+      {
+
+        type: 'doughnut',
+
+        data: {
+
+          labels: [
+            'En cours',
+            'Lecture',
+            'Archivé'
+          ],
+
+          datasets: [
+            {
+
+              data: [
+                Number(status.value.en_cours) || 0,
+                Number(status.value.lecture) || 0,
+                Number(status.value.archives) || 0
+              ],
+
+              backgroundColor: [
+                '#1769e8',
+                '#10aa9b',
+                '#7047d7'
+              ],
+
+              borderColor: '#ffffff',
+
+              borderWidth: 3,
+
+              hoverOffset: 5
+
+            }
+          ]
+
+        },
+
+
+        options: {
+
+          responsive: true,
+
+          maintainAspectRatio: false,
+
+          cutout: '68%',
+
+          plugins: {
+
+            legend: {
+              display: false
+            },
+
+            tooltip: {
+              padding: 10
+            }
+
+          }
+
+        }
+
+      }
+    )
+  }
+
+
+  /* ==========================================================
+     PRIORITÉS ARRIVÉS
+  =========================================================== */
+
+  if (
+    priorityCanvas.value &&
+    priorityTotal.value > 0
+  ) {
+
+    priorityChart = new Chart(
+      priorityCanvas.value,
+      {
+
+        type: 'bar',
+
+        data: {
+
+          labels: [
+            'Normal',
+            'Urgent',
+            'Très urgent'
+          ],
+
+          datasets: [
+
+            {
+
+              label: 'Courriers arrivés',
+
+              data: [
+                Number(priority.value.normal) || 0,
+                Number(priority.value.urgent) || 0,
+                Number(priority.value.tres_urgent) || 0
+              ],
+
+              backgroundColor: [
+                '#10aa9b',
+                '#f59e0b',
+                '#ef5350'
+              ],
+
+              borderRadius: 8,
+
+              borderSkipped: false,
+
+              maxBarThickness: 48
+
+            }
+
+          ]
+
+        },
+
+
+        options: {
+
+          responsive: true,
+
+          maintainAspectRatio: false,
+
+          plugins: {
+
+            legend: {
+              display: false
+            },
+
+            tooltip: {
+
+              backgroundColor: '#102b58',
+
+              padding: 12
+
+            }
+
+          },
+
+
+          scales: {
+
+            x: {
+
+              grid: {
+                display: false
+              },
+
+              ticks: {
+                color: '#6c7f9f'
+              }
+
+            },
+
+
+            y: {
+
+              beginAtZero: true,
+
+              ticks: {
+
+                precision: 0,
+
+                color: '#6c7f9f'
+
+              },
+
+              grid: {
+
+                color:
+                  'rgba(128, 153, 190, 0.16)'
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+    )
+  }
+}
+
+
+/* ============================================================
+   PAYLOAD API
+============================================================ */
+
+function readPayload(response) {
+
+  return (
+    response?.data?.data ??
+    response?.data ??
+    {}
+  )
+}
+
+
+/* ============================================================
+   CHARGEMENT DASHBOARD
+============================================================ */
+
+let requestId = 0
+
+
+async function loadDashboard() {
+
+  const currentRequest =
+    ++requestId
+
+
+  loading.value = true
+
+  errorMessage.value = ''
+
+
+  const mois =
+    Number(selectedMonth.value)
+
+  const annee =
+    Number(selectedYear.value)
+
+
+  console.log('======================================')
+  console.log('📊 CHARGEMENT DASHBOARD')
+  console.log('Mois sélectionné :', mois)
+  console.log('Année sélectionnée :', annee)
+  console.log('======================================')
+
+
+  /*
+   * On détruit les anciens charts immédiatement.
+   * Les canvas restent cependant dans le DOM.
+   */
+  destroyCharts()
+
+
+  try {
+
+    /* ========================================================
+       API
+    ========================================================= */
+
+    const response =
+      await api.get(
+        '/dashboard',
+        {
+          params: {
+            mois,
+            annee,
+            // Cache-busting : évite qu'un cache (navigateur, proxy,
+            // ou l'instance axios) ne renvoie la réponse d'une
+            // période précédente pour la même URL.
+            _: Date.now()
+          },
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        }
+      )
+
+
+    /*
+     * Si une requête plus récente existe,
+     * on ignore celle-ci.
+     */
+    if (
+      currentRequest !== requestId
+    ) {
+      return
+    }
+
+
+    const data =
+      readPayload(response)
+
+
+    /* ========================================================
+       VÉRIFICATION DE COHÉRENCE MOIS / ANNÉE
+       Le backend renvoie parfois (cache, valeur par défaut
+       serveur, etc.) des données pour une autre période que
+       celle demandée. Si c'est le cas, on ne doit PAS afficher
+       cette courbe : elle ne correspondrait pas à la sélection
+       de l'utilisateur.
+    ========================================================= */
+
+    const backendMois =
+      data?.evolution?.mois !== undefined
+        ? Number(data.evolution.mois)
+        : null
+
+    const backendAnnee =
+      data?.evolution?.annee !== undefined
+        ? Number(data.evolution.annee)
+        : null
+
+    if (
+      (backendMois !== null && backendMois !== mois) ||
+      (backendAnnee !== null && backendAnnee !== annee)
+    ) {
+
+      console.warn(
+        '⚠️ Période renvoyée par le backend différente de la période demandée :',
+        { demande: { mois, annee }, recue: { mois: backendMois, annee: backendAnnee } }
+      )
+
+      if (currentRequest === requestId) {
+        errorMessage.value =
+          "Les données reçues ne correspondent pas au mois/année sélectionné. Réessayez."
+        destroyCharts()
+        monthlyLabels.value = []
+        monthlyArrives.value = []
+        monthlyDeparts.value = []
+        loading.value = false
+      }
+
+      return
+    }
+
+
+    /* ========================================================
+       DEBUG BACKEND
+    ========================================================= */
+
+    console.log(
+      '📥 Réponse dashboard :',
+      data
+    )
+
+    console.log(
+      '📅 Mois backend :',
+      data?.evolution?.mois
+    )
+
+    console.log(
+      '📅 Année backend :',
+      data?.evolution?.annee
+    )
+
+    console.log(
+      '🏷️ Labels backend :',
+      data?.evolution?.labels
+    )
+
+    console.log(
+      '📨 Arrivés backend :',
+      data?.evolution?.arrives
+    )
+
+    console.log(
+      '📤 Départs backend :',
+      data?.evolution?.depart
+    )
+
+
+    /* ========================================================
+       STATISTIQUES
+    ========================================================= */
+
+    const statistiques =
+      data?.statistiques || {}
+
+
+    stats.value = {
+
+      courriers_arrives:
+        Number(
+          statistiques.courriers_arrives ?? 0
+        ),
+
+      courriers_depart:
+        Number(
+          statistiques.courriers_depart ?? 0
+        ),
+
+      documents:
+        Number(
+          statistiques.documents ?? 0
+        ),
+
+      utilisateurs:
+        Number(
+          statistiques.utilisateurs ?? 0
+        )
+
+    }
+
+
+    /* ========================================================
+       STATUTS
+    ========================================================= */
+
+    const statuts =
+      data?.statuts || {}
+
+
+    status.value = {
+
+      en_cours:
+        Number(
+          statuts.en_cours ?? 0
+        ),
+
+      lecture:
+        Number(
+          statuts.lecture ?? 0
+        ),
+
+      archives:
+        Number(
+          statuts.archives ??
+          statuts.archive ??
+          0
+        )
+
+    }
+
+
+    /* ========================================================
+       PRIORITÉS ARRIVÉS
+    ========================================================= */
+
+    const priorites =
+      data?.priorites || {}
+
+
+    priority.value = {
+
+      normal:
+        Number(
+          priorites.normal ?? 0
+        ),
+
+      urgent:
+        Number(
+          priorites.urgent ?? 0
+        ),
+
+      tres_urgent:
+        Number(
+          priorites.tres_urgent ?? 0
+        )
+
+    }
+
+
+    /* ========================================================
+       PRIORITÉS DÉPART
+    ========================================================= */
+
+    const prioritesDepart =
+      data?.priorites_depart || {}
+
+
+    priorityDepart.value = {
+
+      normal:
+        Number(
+          prioritesDepart.normal ??
+          0
+        ),
+
+      urgent:
+        Number(
+          prioritesDepart.urgent ??
+          0
+        ),
+
+      tres_urgent:
+        Number(
+          prioritesDepart.tres_urgent ??
+          0
+        )
+
+    }
+
+
+    /* ========================================================
+       ACTIVITÉS
+    ========================================================= */
+
+    activities.value =
+      Array.isArray(data?.activites)
+        ? data.activites
+        : []
+
+
+    /* ========================================================
+       ÉVOLUTION
+    ========================================================= */
+
+    const evolution =
+      data?.evolution || {}
+
+
+    const labels =
+      Array.isArray(evolution.labels)
+        ? evolution.labels
+        : []
+
+
+    const arrives =
+      Array.isArray(evolution.arrives)
+        ? evolution.arrives
+        : []
+
+
+    const departs =
+      Array.isArray(evolution.depart)
+        ? evolution.depart
+        : []
+
+
+    /*
+     * On reconstruit complètement les tableaux.
+     * Cela garantit qu'un ancien mois ne reste pas.
+     */
+    monthlyLabels.value = [
+      ...labels
+    ]
+
+
+    monthlyArrives.value =
+      monthlyLabels.value.map(
+        (_, index) =>
+          Number(
+            arrives[index] ?? 0
+          )
+      )
+
+
+    monthlyDeparts.value =
+      monthlyLabels.value.map(
+        (_, index) =>
+          Number(
+            departs[index] ?? 0
+          )
+      )
+
+
+    /* ========================================================
+       DEBUG FRONTEND
+    ========================================================= */
+
+    console.log(
+      '======================================'
+    )
+
+    console.log(
+      '📊 FRONTEND APRÈS NORMALISATION'
+    )
+
+    console.log(
+      'Période frontend :',
+      selectedMonth.value,
+      selectedYear.value
+    )
+
+    console.log(
+      'Labels FRONT :',
+      [...monthlyLabels.value]
+    )
+
+    console.log(
+      'Arrivés FRONT :',
+      [...monthlyArrives.value]
+    )
+
+    console.log(
+      'Départs FRONT :',
+      [...monthlyDeparts.value]
+    )
+
+    console.log(
+      'Nombre de jours :',
+      monthlyLabels.value.length
+    )
+
+    console.log(
+      '======================================'
+    )
+
+
+    /* ========================================================
+       DATE DE MISE À JOUR
+    ========================================================= */
+
+    lastUpdated.value =
+      new Intl.DateTimeFormat(
+        'fr-FR',
+        {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }
+      ).format(new Date())
+
+
+    /* ========================================================
+       DOM
+    ========================================================= */
+
+    await nextTick()
+
+
+    if (
+      currentRequest !== requestId
+    ) {
+      return
+    }
+
+
+    /*
+     * On arrête le loading AVANT le rendu.
+     */
+    loading.value = false
+
+
+    await nextTick()
+
+
+    if (
+      currentRequest !== requestId
+    ) {
+      return
+    }
+
+
+    console.log(
+      '🎨 Canvas évolution :',
+      evolutionCanvas.value
+    )
+
+
+    /*
+     * Le canvas existe toujours.
+     */
+    renderCharts()
+
+
+    console.log(
+      '✅ Dashboard chargé avec succès'
+    )
+
+  } catch (error) {
+
+    if (
+      currentRequest !== requestId
+    ) {
+      return
+    }
+
+
+    console.error(
+      '❌ Erreur Dashboard :',
+      error
+    )
+
+
+    errorMessage.value =
+      error?.response?.data?.message ||
+      error?.message ||
+      'Une erreur est survenue lors du chargement du tableau de bord.'
+
+
+    destroyCharts()
+
+  } finally {
+
+    if (
+      currentRequest === requestId
+    ) {
+      loading.value = false
+    }
+
+  }
+}
+
+function refreshDashboard() {
+  const currentDate = new Date()
+  const currentMonth = currentDate.getMonth() + 1
+  const currentYear = currentDate.getFullYear()
+
+  const alreadyCurrent =
+    selectedMonth.value === currentMonth &&
+    selectedYear.value === currentYear
+
+  selectedMonth.value = currentMonth
+  selectedYear.value = currentYear
+
+  // Raha tsy niova ny période, tsy hiasa ilay watch,
+  // ka antsoina mivantana ny chargement.
+  if (alreadyCurrent) {
+    loadDashboard()
+  }
+}
+
+
+/* ============================================================
+   WATCH MOIS / ANNÉE
+============================================================ */
+
+/*
+ * Dès que le mois OU l'année change,
+ * on recharge automatiquement le dashboard.
+ *
+ * Il ne faut PAS remettre @change="loadDashboard"
+ * sur les deux <select>.
+ */
+
+watch(
+  [selectedMonth, selectedYear],
+  async (
+    [newMonth, newYear],
+    [oldMonth, oldYear]
+  ) => {
+
+    if (
+      newMonth === oldMonth &&
+      newYear === oldYear
+    ) {
+      return
+    }
+
+
+    console.log('======================================')
+    console.log('🔄 CHANGEMENT DE PÉRIODE')
+    console.log('Ancienne période :', oldMonth, oldYear)
+    console.log('Nouvelle période :', newMonth, newYear)
+    console.log('======================================')
+
+
+    await loadDashboard()
+  }
+)
+
+
+/* ============================================================
+   MONTAGE
+============================================================ */
+
+onMounted(() => {
+  loadDashboard()
+})
+
+
+/* ============================================================
+   DESTRUCTION
+============================================================ */
+
+onBeforeUnmount(() => {
+
+  requestId++
+
+  destroyCharts()
+
+})
+
+</script>
+
+
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
-/* ======================================================
-   BASE & TYPOGRAPHY
-====================================================== */
-.dashboard-content {
-  padding: 30px 40px;
-  background: #f4f7fa;
-  font-family: 'Outfit', sans-serif;
-  color: #1e293b;
-  min-height: 100vh;
+:global(*) {
+  box-sizing: border-box;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Outfit', sans-serif;
+
+.dashboard {
+  --navy: #102d61;
+  --blue: #1769e8;
+  --teal: #10aa9b;
+  --purple: #7047d7;
+  --orange: #f59e0b;
+  --muted: #7183a3;
+
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  min-width: 0;
+
+  padding: clamp(16px, 2vw, 28px);
+
+  color: #17315e;
+
+  background: #f4f7fc;
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
 }
 
-/* ======================================================
+
+/* ============================================================
    HEADER
-====================================================== */
-.dashboard-header {
+============================================================ */
+
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 30px;
-  animation: fadeInUp 0.5s ease-out;
+
+  gap: 22px;
+
+  flex-wrap: wrap;
 }
 
-.dashboard-title {
+
+.heading {
   display: flex;
   align-items: center;
-  gap: 16px;
+
+  gap: 15px;
+
+  min-width: 260px;
 }
 
-.dashboard-title-icon {
+
+.heading-icon {
+  display: grid;
+  place-items: center;
+
   width: 48px;
   height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
   border-radius: 14px;
-  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-  color: #ffffff;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+
+  color: #fff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #1c75f0,
+      #174bb2
+    );
+
+  box-shadow:
+    0 8px 20px
+    rgba(23, 105, 232, .17);
 }
 
-.dashboard-title h1 {
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  margin-bottom: 5px;
+
+  color: #8291ac;
+
+  font-size: 12px;
+}
+
+
+.breadcrumb span {
+  color: #aab7ca;
+}
+
+
+h1 {
   margin: 0;
-  font-size: 26px;
+
+  color: #142f60;
+
+  font-size:
+    clamp(25px, 2.3vw, 34px);
+
   font-weight: 800;
-  color: #0f172a;
-  letter-spacing: -0.5px;
+
+  letter-spacing: -.7px;
 }
 
-.dashboard-title p {
-  margin: 4px 0 0;
+
+.heading p {
+  margin: 6px 0 0;
+
+  color: #7183a3;
+
   font-size: 13px;
-  color: #64748b;
-  font-weight: 400;
 }
 
-.dashboard-header-right {
+
+.header-tools {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  flex-wrap: wrap;
 }
 
-.current-date {
+
+.date-chip,
+.period-control {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #475569;
-  font-weight: 500;
-  background: #ffffff;
-  padding: 10px 18px;
-  border-radius: 30px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+
+  gap: 9px;
+
+  min-height: 42px;
+
+  padding: 0 13px;
+
+  border: 1px solid #dce6f5;
+
+  border-radius: 13px;
+
+  background: #fff;
+
+  color: #617797;
+
+  font-size: 12px;
 }
 
-.refresh-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 30px;
-  background: #ffffff;
-  color: #3b82f6;
-  font-size: 13px;
-  font-weight: 600;
+
+.period-control select {
+  max-width: 115px;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #27436f;
+
+  font: inherit;
+
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-  transition: all 0.3s ease;
 }
 
-.refresh-button:hover:not(:disabled) {
-  background: #f0f9ff;
-  color: #2563eb;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
 
-.refresh-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ======================================================
-   WELCOME CARD (GLASSMORPHISM)
-====================================================== */
-.welcome-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 40px;
-  margin-bottom: 35px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-  color: #ffffff;
-  overflow: hidden;
-  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.2);
-  animation: fadeInUp 0.6s ease-out;
-}
-
-.welcome-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -10%;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(0,0,0,0) 70%);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.welcome-content {
-  position: relative;
-  z-index: 2;
-  max-width: 600px;
-}
-
-.welcome-label {
-  display: inline-block;
-  padding: 6px 14px;
-  margin-bottom: 16px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  color: #e2e8f0;
-  backdrop-filter: blur(10px);
-}
-
-.welcome-card h2 {
-  margin: 0 0 12px;
-  font-size: 32px;
-  font-weight: 300;
-}
-
-.welcome-card h2 span {
-  font-weight: 800;
-  color: #fbbf24;
-}
-
-.welcome-card p {
-  margin: 0 0 24px;
-  font-size: 15px;
-  line-height: 1.6;
-  color: #94a3b8;
-}
-
-.welcome-meta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.account-status,
-.grade-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-}
-
-.account-status {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #34d399;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
-}
-
-.grade-badge {
-  background: rgba(251, 191, 36, 0.15);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  color: #fbbf24;
-}
-
-.welcome-emblem {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  margin-right: 20px;
-}
-
-.emblem-circle {
-  width: 100px;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f59e0b, #fbbf24);
-  color: #0f172a;
-  font-size: 32px;
-  font-weight: 900;
-  border: 6px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
-  text-shadow: 0 2px 4px rgba(255,255,255,0.3);
-}
-
-.welcome-emblem span {
-  color: #fbbf24;
-  font-size: 10px;
-  font-weight: 800;
-  text-align: center;
-  letter-spacing: 2px;
-  line-height: 1.4;
-}
-
-/* ======================================================
-   SECTION & KPI
-====================================================== */
-.section {
-  margin-top: 35px;
-}
-
-.section-heading {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.section-heading h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  color: #1e293b;
-}
-
-.section-heading p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #64748b;
-}
-
-.section-total {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: #ffffff;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
-}
-
-/* ======================================================
-   STATISTICS GRID
-====================================================== */
-.statistics {
+.icon-button {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 24px;
+  place-items: center;
+
+  width: 42px;
+  height: 42px;
+
+  border: 1px solid #dce6f5;
+
+  border-radius: 13px;
+
+  background: #fff;
+
+  color: #2459a5;
+
+  cursor: pointer;
+
+  transition:
+    .2s ease;
 }
 
-.stat-card {
-  position: relative;
-  padding: 24px;
-  background: #ffffff;
-  border-radius: 20px;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  animation: fadeInUp 0.7s ease-out backwards;
+
+.icon-button:hover {
+  background: #eaf2ff;
+  transform: translateY(-1px);
 }
 
-.stat-card:nth-child(1) { animation-delay: 0.1s; }
-.stat-card:nth-child(2) { animation-delay: 0.2s; }
-.stat-card:nth-child(3) { animation-delay: 0.3s; }
-.stat-card:nth-child(4) { animation-delay: 0.4s; }
 
-.stat-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-  border-color: transparent;
+.icon-button:disabled {
+  opacity: .55;
+  cursor: wait;
 }
 
-.stat-top {
+
+/* ============================================================
+   ERROR
+============================================================ */
+
+.error-banner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
 
-.stat-icon {
-  width: 50px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
+  gap: 10px;
 
-.stat-icon-arrive { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #2563eb; }
-.stat-icon-depart { background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #059669; }
-.stat-icon-document { background: linear-gradient(135deg, #f3e8ff, #e9d5ff); color: #7c3aed; }
-.stat-icon-users { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #d97706; }
+  padding: 12px 14px;
 
-.stat-badge {
-  padding: 6px 10px;
-  border-radius: 12px;
-  background: #f1f5f9;
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
+  border: 1px solid #fecaca;
 
-.stat-number {
-  margin-top: 24px;
-  color: #0f172a;
-  font-size: 36px;
-  font-weight: 800;
-  line-height: 1;
-}
+  border-radius: 10px;
 
-.stat-card h3 {
-  margin: 12px 0 4px;
-  color: #334155;
-  font-size: 14px;
-  font-weight: 700;
-}
+  background: #fff1f2;
 
-.stat-card p {
-  margin: 0;
-  color: #94a3b8;
+  color: #b42332;
+
   font-size: 12px;
 }
 
-/* ======================================================
-   MINI STATISTICS
-====================================================== */
-.mini-statistics {
+
+.error-banner span {
+  flex: 1;
+}
+
+
+.error-banner button {
+  border: 0;
+
+  background: transparent;
+
+  color: #b42332;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+.close-error {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 20px;
+  place-items: center;
 }
 
-.mini-stat {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 16px;
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 16px;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-  animation: fadeInUp 0.8s ease-out backwards;
+
+/* ============================================================
+   KPI
+============================================================ */
+
+.kpi-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 15px;
 }
 
-.mini-stat:hover {
+
+.kpi-card {
+  position: relative;
+
+  overflow: hidden;
+
+  min-height: 155px;
+
+  padding: 18px 20px;
+
+  border: 1px solid var(--border);
+
+  border-left:
+    4px solid var(--accent);
+
+  border-radius: 13px;
+
+  background:
+    linear-gradient(
+      115deg,
+      #fff 0%,
+      var(--tint) 145%
+    );
+
+  box-shadow:
+    0 5px 18px
+    rgba(27, 60, 112, .06);
+
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease;
+}
+
+
+.kpi-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+
+  box-shadow:
+    0 12px 28px
+    rgba(27, 60, 112, .10);
 }
 
-.mini-stat-icon {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
+
+.kpi-blue {
+  --accent: #1769e8;
+  --border: #c5dcff;
+  --tint: #edf5ff;
+}
+
+
+.kpi-teal {
+  --accent: #10aa9b;
+  --border: #bcece5;
+  --tint: #edfcf9;
+}
+
+
+.kpi-purple {
+  --accent: #7047d7;
+  --border: #d9ccff;
+  --tint: #f5f0ff;
+}
+
+
+.kpi-orange {
+  --accent: #ed9700;
+  --border: #ffe0a8;
+  --tint: #fff8ec;
+}
+
+
+.kpi-top {
+  position: relative;
+  z-index: 1;
+
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 12px;
+  justify-content: space-between;
 }
 
-.mini-danger { background: #fee2e2; color: #dc2626; }
-.mini-warning { background: #fef3c7; color: #d97706; }
-.mini-info { background: #dbeafe; color: #2563eb; }
-.mini-success { background: #d1fae5; color: #059669; }
 
-.mini-stat > div:last-child {
-  display: flex;
-  flex-direction: column;
-}
-
-.mini-stat strong {
-  color: #0f172a;
-  font-size: 18px;
-  font-weight: 800;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.mini-stat span {
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-/* ======================================================
-   DASHBOARD GRID & CHARTS
-====================================================== */
-.dashboard-grid, .charts-grid {
+.kpi-icon {
   display: grid;
-  grid-template-columns: 1.55fr 1fr;
-  gap: 24px;
-  margin-top: 24px;
+  place-items: center;
+
+  width: 46px;
+  height: 46px;
+
+  border-radius: 50%;
+
+  background: var(--accent);
+
+  color: white;
+
+  box-shadow:
+    0 5px 14px
+    rgba(23, 105, 232, .12);
 }
 
-.panel, .chart-card {
-  padding: 24px;
-  background: #ffffff;
-  border: 1px solid rgba(226, 232, 240, 0.8);
+
+.kpi-tag {
+  padding: 5px 9px;
+
   border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-  transition: box-shadow 0.3s ease;
+
+  background: rgba(255,255,255,.72);
+
+  color: #7183a3;
+
+  font-size: 10px;
+
+  font-weight: 700;
 }
 
-.panel:hover, .chart-card:hover {
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
+
+.kpi-label {
+  position: relative;
+  z-index: 1;
+
+  margin-top: 13px;
+
+  color: #4e6386;
+
+  font-size: 12px;
+
+  font-weight: 650;
 }
 
-.chart-large {
-  grid-row: span 2;
+
+.kpi-number {
+  position: relative;
+  z-index: 1;
+
+  margin-top: 2px;
+
+  color: #142f60;
+
+  font-size: 29px;
+
+  line-height: 1.25;
+
+  font-weight: 800;
+
+  letter-spacing: -.6px;
 }
 
-.panel-header, .chart-header {
+
+.kpi-foot {
+  position: relative;
+  z-index: 1;
+
+  margin-top: 6px;
+
+  color: #8190aa;
+
+  font-size: 11px;
+}
+
+
+.kpi-mark {
+  margin-right: 3px;
+
+  color: var(--accent);
+
+  font-weight: 900;
+}
+
+
+.kpi-watermark {
+  position: absolute;
+
+  right: 10px;
+  bottom: 10px;
+
+  color: var(--accent);
+
+  opacity: .08;
+}
+
+
+/* ============================================================
+   PANELS
+============================================================ */
+
+.main-grid,
+.lower-grid,
+.bottom-grid {
+  display: grid;
+
+  gap: 15px;
+}
+
+
+.main-grid {
+  grid-template-columns:
+    minmax(0, 1.8fr)
+    minmax(320px, 1fr);
+}
+
+
+.lower-grid {
+  grid-template-columns:
+    minmax(0, 1.65fr)
+    minmax(320px, 1fr);
+}
+
+
+.bottom-grid {
+  grid-template-columns:
+    minmax(0, 1.65fr)
+    minmax(280px, 1fr);
+}
+
+
+.panel {
+  min-width: 0;
+
+  padding: 20px;
+
+  border: 1px solid #e0e9f6;
+
+  border-radius: 13px;
+
+  background: #fff;
+
+  box-shadow:
+    0 5px 20px
+    rgba(27, 60, 112, .04);
+}
+
+
+.panel-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+
+  gap: 14px;
+
+  margin-bottom: 17px;
 }
 
-.panel-header h2, .chart-title {
+
+.panel-title {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  color: #0f172a;
-  font-size: 16px;
-  font-weight: 800;
+  align-items: flex-start;
+
+  gap: 12px;
+
+  min-width: 0;
 }
 
-.chart-title svg, .panel-header svg {
-  color: #3b82f6;
-}
 
-.panel-header p, .chart-header p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 12px;
-}
+.panel-icon {
+  display: grid;
+  place-items: center;
 
-.chart-period {
-  padding: 6px 12px;
-  border-radius: 14px;
-  background: #f1f5f9;
-  color: #475569;
-  font-size: 11px;
-  font-weight: 700;
-}
+  flex: 0 0 34px;
 
-.chart-container, .evolution-container, .status-container, .priority-container {
-  position: relative;
-  width: 100%;
-}
+  width: 34px;
+  height: 34px;
 
-.evolution-container { height: 350px; }
-.status-container, .priority-container { height: 260px; }
-
-/* ======================================================
-   ARCHIVE SUMMARY
-====================================================== */
-.archive-progress-area {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 40px;
-  min-height: 240px;
-}
-
-.archive-circle {
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: conic-gradient(#10b981 var(--archive-rate, 0%), #f1f5f9 0);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 0 0 12px #ffffff, 0 4px 15px rgba(0,0,0,0.05);
-}
-
-.archive-circle::before {
-  content: "";
-  position: absolute;
-  inset: 12px;
-  border-radius: 50%;
-  background: #ffffff;
-  z-index: 1;
-}
-
-.archive-circle strong,
-.archive-circle span {
-  position: relative;
-  z-index: 2;
-}
-
-.archive-circle strong {
-  color: #0f172a;
-  font-size: 32px;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.archive-circle span {
-  margin-top: 6px;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.archive-details {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 160px;
-}
-
-.archive-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #475569;
-}
-
-.archive-line > div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.archive-line strong {
-  color: #0f172a;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.dot-green { background: #10b981; }
-.dot-blue { background: #3b82f6; }
-.dot-gold { background: #f59e0b; }
-
-/* ======================================================
-   ACTIVITÉS
-====================================================== */
-.activities-list {
-  max-height: 320px;
-  overflow-y: auto;
-  padding-right: 10px;
-}
-
-.activities-list::-webkit-scrollbar {
-  width: 6px;
-}
-.activities-list::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
   border-radius: 10px;
 }
 
-.activity-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 16px 12px;
-  border-bottom: 1px solid #f1f5f9;
-  border-radius: 12px;
-  transition: background 0.2s ease;
+
+.blue-icon {
+  background: #eaf2ff;
+  color: #1769e8;
 }
 
-.activity-item:hover {
-  background: #f8fafc;
+
+.orange-icon {
+  background: #fff3dc;
+  color: #dc8a00;
 }
 
-.activity-item:last-child {
-  border-bottom: none;
+
+.panel h2 {
+  margin: 0;
+
+  color: #193664;
+
+  font-size: 17px;
+
+  font-weight: 750;
+
+  letter-spacing: -.2px;
 }
 
-.activity-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
+
+.panel-heading p {
+  margin: 5px 0 0;
+
+  color: #8492aa;
+
+  font-size: 11px;
+
+  line-height: 1.5;
+}
+
+
+/* ============================================================
+   LEGEND
+============================================================ */
+
+.legend {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 12px;
+
+  gap: 15px;
+
+  padding-top: 5px;
+
+  color: #667b9c;
+
+  font-size: 11px;
+
+  white-space: nowrap;
 }
 
-.activity-default { background: #f1f5f9; color: #475569; }
-.activity-success { background: #d1fae5; color: #059669; }
-.activity-warning { background: #fef3c7; color: #d97706; }
-.activity-danger { background: #fee2e2; color: #dc2626; }
-.activity-info { background: #dbeafe; color: #2563eb; }
 
-.activity-content {
+.legend span {
   display: flex;
+  align-items: center;
+
+  gap: 6px;
+}
+
+
+/* ============================================================
+   DOTS
+============================================================ */
+
+.dot {
+  display: inline-block;
+
+  width: 9px;
+  height: 9px;
+
+  flex: 0 0 9px;
+
+  border-radius: 50%;
+}
+
+
+.blue-dot {
+  background: #1769e8;
+}
+
+
+.teal-dot {
+  background: #10aa9b;
+}
+
+
+.purple-dot {
+  background: #7047d7;
+}
+
+
+.orange-dot {
+  background: #f59e0b;
+}
+
+
+.red-dot {
+  background: #ef5350;
+}
+
+
+/* ============================================================
+   CHART WRAP
+============================================================ */
+
+.chart-wrap {
+  position: relative;
+
+  height: 260px;
+
+  min-height: 220px;
+}
+
+
+.chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+
+.canvas-hidden {
+  visibility: hidden;
+}
+
+
+.chart-overlay {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
   flex-direction: column;
-  flex: 1;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  color: #8b9ab2;
+
+  font-size: 12px;
+
+  text-align: center;
+
+  background: rgba(255,255,255,.96);
 }
 
-.activity-content strong {
-  color: #1e293b;
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 4px;
+
+.chart-state {
+  display: grid;
+
+  place-items: center;
+
+  align-content: center;
+
+  gap: 10px;
+
+  height: 100%;
+
+  color: #8b9ab2;
+
+  font-size: 12px;
 }
 
-.activity-content span, .activity-content small {
-  color: #64748b;
+
+/* ============================================================
+   STATUS
+============================================================ */
+
+.status-layout {
+  display: flex;
+
+  align-items: center;
+
+  gap: 16px;
+
+  min-height: 245px;
+}
+
+
+.donut-wrap {
+  position: relative;
+
+  flex: 0 0 52%;
+
+  height: 220px;
+
+  min-width: 0;
+}
+
+
+.donut-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+
+.donut-center {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  pointer-events: none;
+}
+
+
+.donut-center strong {
+  color: #193664;
+
+  font-size: 25px;
+
+  font-weight: 800;
+}
+
+
+.donut-center span {
+  margin-top: 2px;
+
+  color: #8795ad;
+
   font-size: 11px;
 }
 
-.activity-content small {
-  color: #94a3b8;
+
+.status-legend {
+  display: flex;
+
+  flex: 1;
+
+  flex-direction: column;
+
+  gap: 22px;
+
+  min-width: 0;
+}
+
+
+.status-row {
+  display: grid;
+
+  grid-template-columns:
+    10px
+    minmax(55px, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 8px;
+
+  color: #425a80;
+
+  font-size: 11px;
+}
+
+
+.status-row b {
+  color: #193664;
+
+  font-size: 12px;
+}
+
+
+.status-row small {
+  grid-column: 2 / 4;
+
+  color: #91a0b7;
+
+  font-size: 10px;
+
+  text-align: right;
+}
+
+
+/* ============================================================
+   PRIORITÉS DÉPART
+============================================================ */
+
+.priority-circles {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr)
+    auto;
+
+  gap: 12px;
+
+  align-items: center;
+
+  margin-bottom: 18px;
+}
+
+
+.prio-circle-card {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 8px;
+}
+
+
+.prio-ring {
+  position: relative;
+
+  width: 110px;
+  height: 110px;
+}
+
+
+.prio-svg {
+  width: 100%;
+  height: 100%;
+
+  transform: rotate(-90deg);
+}
+
+
+.ring-bg {
+  fill: none;
+
+  stroke: #edf2f9;
+
+  stroke-width: 10;
+}
+
+
+.ring-fill {
+  fill: none;
+
+  stroke-width: 10;
+
+  stroke-linecap: round;
+
+  transition:
+    stroke-dasharray .6s
+    cubic-bezier(.4,0,.2,1);
+}
+
+
+.ring-normal {
+  stroke: #10aa9b;
+}
+
+
+.ring-urgent {
+  stroke: #f59e0b;
+}
+
+
+.ring-tres-urgent {
+  stroke: #ef5350;
+}
+
+
+.prio-ring-inner {
+  position: absolute;
+
+  inset: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 1px;
+}
+
+
+.prio-ring-inner strong {
+  color: #193664;
+
+  font-size: 19px;
+
+  font-weight: 800;
+
+  line-height: 1;
+}
+
+
+.prio-ring-inner span {
+  color: #8795ad;
+
+  font-size: 10px;
+
+  font-weight: 600;
+}
+
+
+.prio-label {
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  color: #3d5580;
+
+  font-size: 12px;
+
+  font-weight: 700;
+}
+
+
+.prio-count {
+  color: #8795ad;
+
+  font-size: 10px;
+}
+
+
+.prio-total-card {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  min-width: 90px;
+
+  padding: 16px;
+
+  border: 1.5px dashed #d0ddf3;
+
+  border-radius: 14px;
+}
+
+
+.prio-total-icon {
+  display: grid;
+
+  place-items: center;
+
+  width: 44px;
+  height: 44px;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      135deg,
+      #eaf2ff,
+      #d0e5ff
+    );
+
+  color: #1769e8;
+}
+
+
+.prio-total-info {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  gap: 2px;
+}
+
+
+.prio-total-info strong {
+  color: #193664;
+
+  font-size: 22px;
+
+  font-weight: 800;
+}
+
+
+.prio-total-info span {
+  color: #8795ad;
+
+  font-size: 10px;
+
+  font-weight: 600;
+
+  text-align: center;
+}
+
+
+/* ============================================================
+   BARRE PRIORITÉ
+============================================================ */
+
+.prio-bar-section {
   margin-top: 4px;
 }
 
-/* ======================================================
-   QUICK ACTIONS
-====================================================== */
-.quick-actions {
+
+.prio-bar-label {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 20px;
+
+  justify-content: space-between;
+
+  margin-bottom: 6px;
+
+  color: #7183a3;
+
+  font-size: 10px;
 }
 
-.quick-action {
-  width: 100%;
+
+.prio-bar-label span {
   display: flex;
+
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  background: #ffffff;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  gap: 5px;
 }
 
-.quick-action:hover {
-  background: #f8fafc;
-  border-color: #3b82f6;
-  transform: translateX(6px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
-}
 
-.quick-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
+.prio-bar-track {
   display: flex;
+
+  height: 8px;
+
+  overflow: hidden;
+
+  border-radius: 99px;
+
+  background: #edf2f9;
+}
+
+
+.prio-bar-seg {
+  height: 100%;
+
+  transition:
+    width .5s
+    cubic-bezier(.4,0,.2,1);
+}
+
+
+.prio-seg-normal {
+  background: #10aa9b;
+}
+
+
+.prio-seg-urgent {
+  background: #f59e0b;
+}
+
+
+.prio-seg-tres-urgent {
+  background: #ef5350;
+}
+
+
+/* ============================================================
+   PRIORITÉS ARRIVÉS
+============================================================ */
+
+.priority-chart-wrap {
+  position: relative;
+
+  height: 190px;
+
+  min-height: 170px;
+}
+
+
+.priority-chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+
+.priority-summary {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 8px;
+
+  flex-wrap: wrap;
+
+  padding: 10px 0 0;
+
+  color: #627797;
+
+  font-size: 10px;
+}
+
+
+.priority-summary span {
+  display: flex;
+
   align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: #eff6ff;
-  color: #2563eb;
-  transition: all 0.3s ease;
+
+  gap: 6px;
 }
 
-.quick-action:hover .quick-icon {
-  background: #2563eb;
-  color: #ffffff;
+
+.priority-summary b {
+  margin-left: 2px;
+
+  color: #193664;
 }
 
-.quick-text {
+
+/* ============================================================
+   ACTIVITÉS
+============================================================ */
+
+.text-button {
   display: flex;
-  flex-direction: column;
-  flex: 1;
-}
 
-.quick-text strong {
-  color: #1e293b;
-  font-size: 13px;
+  align-items: center;
+
+  gap: 6px;
+
+  border: 0;
+
+  background: transparent;
+
+  color: #1769e8;
+
+  font-size: 11px;
+
   font-weight: 700;
-  margin-bottom: 2px;
+
+  cursor: pointer;
+
+  white-space: nowrap;
 }
 
-.quick-text small {
-  color: #64748b;
+
+.activity-list {
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.activity-row {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid #edf1f8;
+}
+
+
+.activity-row:last-child {
+  border-bottom: 0;
+}
+
+
+.activity-symbol {
+  display: grid;
+
+  place-items: center;
+
+  flex: 0 0 34px;
+
+  width: 34px;
+  height: 34px;
+
+  border-radius: 50%;
+
+  color: #fff;
+}
+
+
+.symbol-blue {
+  background: #1769e8;
+}
+
+
+.symbol-teal {
+  background: #10aa9b;
+}
+
+
+.symbol-purple {
+  background: #7047d7;
+}
+
+
+.symbol-red {
+  background: #e85b62;
+}
+
+
+.activity-copy {
+  display: flex;
+
+  flex: 1;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+  min-width: 0;
+}
+
+
+.activity-copy strong {
+  overflow: hidden;
+
+  color: #29466f;
+
+  font-size: 12px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.activity-copy > span {
+  overflow: hidden;
+
+  color: #8493ab;
+
+  font-size: 11px;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.activity-copy small {
+  display: flex;
+
+  align-items: center;
+
+  gap: 4px;
+
+  color: #98a5ba;
+
+  font-size: 10px;
+}
+
+
+.activity-row time {
+  align-self: flex-start;
+
+  padding-top: 3px;
+
+  color: #8a9ab3;
+
+  font-size: 10px;
+
+  white-space: nowrap;
+}
+
+
+/* ============================================================
+   EMPTY
+============================================================ */
+
+.empty-state {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 9px;
+
+  min-height: 190px;
+
+  color: #8b9ab2;
+
+  text-align: center;
+}
+
+
+.empty-state strong {
+  color: #4a6286;
+
+  font-size: 13px;
+}
+
+
+.empty-state span {
   font-size: 11px;
 }
 
-.quick-arrow {
-  color: #94a3b8;
-  transition: transform 0.3s ease;
+
+/* ============================================================
+   QUICK LINKS
+============================================================ */
+
+.quick-links {
+  display: flex;
+
+  flex-direction: column;
 }
 
-.quick-action:hover .quick-arrow {
-  transform: translateX(4px);
-  color: #3b82f6;
+
+.quick-links button {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  width: 100%;
+
+  padding: 10px 0;
+
+  border: 0;
+
+  border-bottom: 1px solid #f0f3f8;
+
+  background: transparent;
+
+  color: #7f91ac;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background .15s ease,
+    padding .15s ease;
 }
 
-/* ======================================================
-   ANIMATIONS & RESPONSIVE
-====================================================== */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+
+.quick-links button:last-child {
+  border-bottom: 0;
 }
+
+
+.quick-links button:hover {
+  padding-left: 6px;
+
+  border-radius: 8px;
+
+  background: #f7faff;
+}
+
+
+.quick-links button > span:nth-child(2) {
+  display: flex;
+
+  flex: 1;
+
+  flex-direction: column;
+
+  gap: 3px;
+
+  min-width: 0;
+}
+
+
+.quick-links b {
+  color: #345078;
+
+  font-size: 11px;
+}
+
+
+.quick-links small {
+  color: #8a9ab2;
+
+  font-size: 10px;
+}
+
+
+.quick-icon {
+  display: grid;
+
+  place-items: center;
+
+  flex: 0 0 34px;
+
+  width: 34px;
+  height: 34px;
+
+  border-radius: 10px;
+}
+
+
+.quick-blue {
+  background: #eaf2ff;
+
+  color: #1769e8;
+}
+
+
+.quick-teal {
+  background: #e7faf6;
+
+  color: #10aa9b;
+}
+
+
+.quick-purple {
+  background: #f1ebff;
+
+  color: #7047d7;
+}
+
+
+.quick-orange {
+  background: #fff3dc;
+
+  color: #dc8a00;
+}
+
+
+/* ============================================================
+   FOOTER
+============================================================ */
+
+.dashboard-footer {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 12px;
+
+  flex-wrap: wrap;
+
+  padding: 4px 2px;
+
+  color: #91a0b6;
+
+  font-size: 10px;
+}
+
+
+.dashboard-footer span:first-child {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+}
+
+
+/* ============================================================
+   ANIMATION
+============================================================ */
 
 .spinning {
-  animation: dashboard-spin 1s linear infinite;
+  animation:
+    spin 1s linear infinite;
 }
 
-@keyframes dashboard-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+
+.spinner {
+  width: 20px;
+  height: 20px;
+
+  border: 2px solid #dbe6f5;
+
+  border-top-color: #1769e8;
+
+  border-radius: 50%;
+
+  animation:
+    spin .8s linear infinite;
 }
 
-@media (max-width: 1200px) {
-  .statistics, .mini-statistics { grid-template-columns: repeat(2, 1fr); }
-  .dashboard-grid, .charts-grid { grid-template-columns: 1fr; }
-  .chart-large { grid-row: auto; }
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-@media (max-width: 768px) {
-  .dashboard-content { padding: 20px; }
-  .welcome-card { flex-direction: column; padding: 30px; text-align: center; }
-  .welcome-emblem { margin: 20px 0 0; }
-  .welcome-meta { justify-content: center; }
-  .archive-progress-area { flex-direction: column; }
+
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 1100px) {
+
+  .kpi-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+
+  .main-grid,
+  .lower-grid,
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+  .status-layout {
+    justify-content: center;
+  }
+
+
+  .status-panel .status-layout {
+    max-width: 560px;
+
+    margin: auto;
+  }
+
+
+  .priority-circles {
+    grid-template-columns:
+      repeat(2, 1fr);
+
+    justify-items: center;
+  }
+
+
+  .prio-total-card {
+    grid-column: 1 / -1;
+
+    width: 100%;
+
+    flex-direction: row;
+
+    gap: 14px;
+  }
+
 }
 
-@media (max-width: 480px) {
-  .statistics, .mini-statistics { grid-template-columns: 1fr; }
-  .dashboard-header-right { flex-direction: column; align-items: flex-start; }
+
+@media (max-width: 650px) {
+
+  .dashboard {
+    padding: 13px;
+
+    gap: 14px;
+  }
+
+
+  .page-header {
+    align-items: flex-start;
+  }
+
+
+  .heading {
+    align-items: flex-start;
+  }
+
+
+  .heading-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-basis: 42px;
+  }
+
+
+  .header-tools {
+    justify-content: flex-start;
+
+    width: 100%;
+  }
+
+
+  .date-chip {
+    display: none;
+  }
+
+
+  .kpi-grid {
+    grid-template-columns:
+      1fr 1fr;
+
+    gap: 10px;
+  }
+
+
+  .kpi-card {
+    min-height: 145px;
+
+    padding: 14px;
+  }
+
+
+  .kpi-number {
+    font-size: 25px;
+  }
+
+
+  .kpi-label {
+    font-size: 11px;
+  }
+
+
+  .kpi-foot {
+    font-size: 10px;
+  }
+
+
+  .panel {
+    padding: 15px;
+  }
+
+
+  .panel-heading {
+    gap: 8px;
+  }
+
+
+  .panel h2 {
+    font-size: 15px;
+  }
+
+
+  .panel-heading p {
+    font-size: 10px;
+  }
+
+
+  .legend {
+    gap: 8px;
+
+    font-size: 10px;
+  }
+
+
+  .chart-wrap {
+    height: 230px;
+  }
+
+
+  .status-layout {
+    flex-direction: column;
+  }
+
+
+  .donut-wrap {
+    width: 100%;
+
+    max-width: 250px;
+
+    flex-basis: auto;
+  }
+
+
+  .status-legend {
+    width: 100%;
+
+    gap: 12px;
+  }
+
+
+  .status-row {
+    grid-template-columns:
+      10px
+      1fr
+      auto
+      auto;
+  }
+
+
+  .status-row small {
+    grid-column: auto;
+  }
+
+
+  .activity-row {
+    gap: 9px;
+  }
+
+
+  .activity-row time {
+    font-size: 9px;
+  }
+
+
+  .priority-circles {
+    grid-template-columns:
+      1fr 1fr;
+
+    gap: 10px;
+  }
+
+
+  .prio-total-card {
+    grid-column: 1 / -1;
+
+    flex-direction: row;
+  }
+
+
+  .prio-ring {
+    width: 90px;
+    height: 90px;
+  }
+
+
+  .prio-ring-inner strong {
+    font-size: 16px;
+  }
+
+
+  .priority-chart-wrap {
+    height: 175px;
+  }
+
+
+  .bottom-grid {
+    grid-template-columns: 1fr;
+  }
+
 }
+
+
+@media (max-width: 390px) {
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+  .kpi-card {
+    min-height: 130px;
+  }
+
+
+  .legend {
+    flex-direction: column;
+
+    align-items: flex-start;
+  }
+
+
+  .period-control {
+    width: 100%;
+
+    justify-content: space-between;
+  }
+
+
+  .period-control select {
+    max-width: 45%;
+  }
+
+
+  .priority-circles {
+    grid-template-columns: 1fr;
+  }
+
+
+  .prio-total-card {
+    flex-direction: row;
+  }
+
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+
+    animation-duration: .01ms !important;
+
+    transition-duration: .01ms !important;
+
+    scroll-behavior: auto !important;
+  }
+
+}
+
 </style>
-

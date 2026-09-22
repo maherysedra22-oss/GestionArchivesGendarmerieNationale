@@ -5025,18 +5025,26 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: #2563EB;
   color: #ffffff;
-  border-color: var(--primary);
-
-  box-shadow:
-    0 5px 14px
-    rgba(15, 39, 71, 0.18);
+  border: 0;
+  border-radius: 12px;
+  height: 46px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-light);
-  border-color: var(--primary-light);
+  background: #1D4ED8;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
 }
 
 .btn-light {

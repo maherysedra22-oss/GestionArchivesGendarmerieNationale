@@ -1,4 +1,3 @@
-```vue
 <template>
   <div class="courriers-page">
 
@@ -74,13 +73,13 @@
 
 
       <div class="stat-card">
-        <div class="stat-icon stat-green">
-          <FileText :size="22" />
+        <div class="stat-icon stat-warning">
+          <AlertCircle :size="22" />
         </div>
 
         <div class="stat-content">
-          <span class="stat-label">Documents</span>
-          <strong>{{ statistiques.documents }}</strong>
+          <span class="stat-label">Urgents</span>
+          <strong>{{ statistiques.urgents }}</strong>
         </div>
       </div>
 
@@ -830,20 +829,81 @@
 
 
               <!-- PRIORITE -->
-              <div class="field">
-                <label for="priorite">
+              <div class="field full-width">
+                <label>
                   Priorité <span class="required">*</span>
                 </label>
 
-                <select
-                  id="priorite"
-                  v-model="formulaire.priorite"
-                  required
-                >
-                  <option value="NORMAL">Normal</option>
-                  <option value="URGENT">Urgent</option>
-                  <option value="TRES_URGENT">Très urgent</option>
-                </select>
+                <div class="choice-grid">
+                  <!-- NORMAL -->
+                  <button
+                    type="button"
+                    class="choice-card priority-normal"
+                    :class="{ selected: formulaire.priorite === 'NORMAL' }"
+                    @click="formulaire.priorite = 'NORMAL'"
+                    :aria-pressed="formulaire.priorite === 'NORMAL'"
+                  >
+                    <span class="choice-icon">●</span>
+
+                    <span class="choice-content">
+                      <strong>Normal</strong>
+                      <small>Traitement standard</small>
+                    </span>
+
+                    <span
+                      v-if="formulaire.priorite === 'NORMAL'"
+                      class="choice-check"
+                    >
+                      ✓
+                    </span>
+                  </button>
+
+                  <!-- URGENT -->
+                  <button
+                    type="button"
+                    class="choice-card priority-urgent"
+                    :class="{ selected: formulaire.priorite === 'URGENT' }"
+                    @click="formulaire.priorite = 'URGENT'"
+                    :aria-pressed="formulaire.priorite === 'URGENT'"
+                  >
+                    <span class="choice-icon">▲</span>
+
+                    <span class="choice-content">
+                      <strong>Urgent</strong>
+                      <small>Traitement prioritaire</small>
+                    </span>
+
+                    <span
+                      v-if="formulaire.priorite === 'URGENT'"
+                      class="choice-check"
+                    >
+                      ✓
+                    </span>
+                  </button>
+
+                  <!-- TRES URGENT -->
+                  <button
+                    type="button"
+                    class="choice-card priority-very-urgent"
+                    :class="{ selected: formulaire.priorite === 'TRES_URGENT' }"
+                    @click="formulaire.priorite = 'TRES_URGENT'"
+                    :aria-pressed="formulaire.priorite === 'TRES_URGENT'"
+                  >
+                    <span class="choice-icon">⚠︎</span>
+
+                    <span class="choice-content">
+                      <strong>Très urgent</strong>
+                      <small>Traitement immédiat</small>
+                    </span>
+
+                    <span
+                      v-if="formulaire.priorite === 'TRES_URGENT'"
+                      class="choice-check"
+                    >
+                      ✓
+                    </span>
+                  </button>
+                </div>
               </div>
 
 
@@ -2004,6 +2064,8 @@ const canDownloadDocuments = computed(() =>
 
 const courriers = ref([])
 
+const globalStats = ref({ total: 0, urgents: 0, tresUrgents: 0 })
+
 const natures = ref([])
 
 const classements = ref([])
@@ -2210,35 +2272,24 @@ function showToast(message, type = 'success') {
 
 const statistiques = computed(() => {
 
-  const total = pagination.total
+  // Les totaux viennent de l'API (toute la base, pas seulement la page)
+  const total = globalStats.value.total || pagination.total
 
+  const urgents = globalStats.value.urgents
+
+  const tresUrgents = globalStats.value.tresUrgents
+
+  // Les destinations se comptent sur la page courante
   let totalDestinations = 0
-
-  let totalDocuments = 0
-
-  let tresUrgents = 0
-
   for (const courrier of courriers.value) {
-
     totalDestinations += getDestinations(courrier).length
-
-    totalDocuments += getDocumentCount(courrier)
-
-    if (courrier.priorite === 'TRES_URGENT') {
-      tresUrgents++
-    }
   }
 
   return {
-
     total,
-
     destinations: totalDestinations,
-
-    documents: totalDocuments,
-
+    urgents,
     tresUrgents
-
   }
 })
 
@@ -2889,6 +2940,25 @@ async function chargerCourriers() {
 
     courriers.value =
       normalized.data
+
+
+    // Statistiques globales retournées par l'API
+    if (response?.stats) {
+      globalStats.value = {
+        total:      response.stats.total      ?? 0,
+        urgents:    response.stats.urgents    ?? 0,
+        tresUrgents: response.stats.tresUrgents ?? 0,
+      }
+    } else {
+      // Fallback : compter sur la page courante
+      let urgents = 0
+      let tresUrgents = 0
+      for (const c of courriers.value) {
+        if (c.priorite === 'URGENT')      urgents++
+        if (c.priorite === 'TRES_URGENT') tresUrgents++
+      }
+      globalStats.value = { total: normalized.total, urgents, tresUrgents }
+    }
 
 
     pagination.currentPage =
@@ -4824,21 +4894,36 @@ onMounted(async () => {
 .btn:disabled {
   opacity: .55;
   cursor: not-allowed;
+  transform: none !important;
 }
+
 
 
 .btn-primary {
   color: white;
   background: #2563eb;
-  border-color: #2563eb;
+  border: 0;
+  border-radius: 12px;
+  height: 46px;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 
 .btn-primary:hover:not(:disabled) {
   background: #1d4ed8;
-  border-color: #1d4ed8;
-  box-shadow: 0 5px 15px rgba(37, 99, 235, .18);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+  transform: translateY(-1px);
 }
+
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
 
 
 .btn-secondary {
@@ -4963,6 +5048,12 @@ onMounted(async () => {
 .stat-green {
   background: #ecfdf5;
   color: #059669;
+}
+
+
+.stat-warning {
+  background: #fffbeb;
+  color: #d97706;
 }
 
 
@@ -6563,6 +6654,110 @@ tbody tr:hover {
 }
 
 
+/* ================================================================
+   CHOICE CARDS
+================================================================ */
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.choice-card {
+  position: relative;
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 2px solid #e2e8f0;
+  border-radius: 11px;
+  background: white;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.choice-card:hover {
+  transform: translateY(-1px);
+  border-color: #94a3b8;
+  box-shadow: 0 5px 14px rgba(15, 23, 42, 0.06);
+}
+
+.choice-card.selected {
+  color: white;
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.14);
+  transform: translateY(-1px);
+}
+
+.choice-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #f1f5f9;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.choice-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.choice-content strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.choice-content small {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.choice-check {
+  margin-left: auto;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 23px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+/* PRIORITÉ COULEURS SÉLECTIONNÉES */
+.priority-normal:hover { border-color: #22c55e; }
+.priority-normal.selected { background: #15803d; border-color: #15803d; }
+.priority-normal.selected .choice-icon { background: rgba(255, 255, 255, 0.18); color: white; }
+.priority-normal.selected .choice-content small { color: #dcfce7; }
+
+.priority-urgent:hover { border-color: #f97316; }
+.priority-urgent.selected { background: #c2410c; border-color: #c2410c; }
+.priority-urgent.selected .choice-icon { background: rgba(255, 255, 255, 0.18); color: white; }
+.priority-urgent.selected .choice-content small { color: #ffedd5; }
+
+.priority-very-urgent:hover { border-color: #ef4444; }
+.priority-very-urgent.selected { background: #b91c1c; border-color: #b91c1c; }
+.priority-very-urgent.selected .choice-icon { background: rgba(255, 255, 255, 0.18); color: white; }
+.priority-very-urgent.selected .choice-content small { color: #fee2e2; }
+
 /* ============================================================
    RESPONSIVE TABLET
 ============================================================ */
@@ -6927,4 +7122,3 @@ tbody tr:hover {
     0 24px 70px rgba(15, 23, 42, 0.30);
 }
 </style>
-```

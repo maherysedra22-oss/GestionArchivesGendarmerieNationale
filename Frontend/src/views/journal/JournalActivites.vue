@@ -411,33 +411,19 @@
               </td>
 
               <!-- Référence -->
+              
               <td>
-
                 <span
-                  v-if="item.reference_objet"
+                  v-if="getDisplayReference(item) !== '—'"
                   class="reference-value"
-                  :class="getReferenceClass(item.reference_objet)"
+                  :class="getReferenceClass(getDisplayReference(item))"
                 >
-                  {{ item.reference_objet }}
+                  {{ getDisplayReference(item) }}
                 </span>
 
-                <span
-                  v-else-if="
-                    item.id_enregistrement !== null &&
-                    item.id_enregistrement !== undefined
-                  "
-                  class="reference-id"
-                >
-                  #{{ item.id_enregistrement }}
-                </span>
-
-                <span
-                  v-else
-                  class="muted"
-                >
+                <span v-else class="muted">
                   —
                 </span>
-
               </td>
 
               <!-- IP -->
@@ -2031,6 +2017,42 @@ function handleEscape(event) {
   ) {
     closeDetail()
   }
+}
+
+
+
+function getDisplayReference(item) {
+  if (item.reference_objet) {
+    return item.reference_objet
+  }
+
+  const id = item.id_enregistrement
+
+  if (id === null || id === undefined) {
+    return '—'
+  }
+
+  const table = String(
+    item.table_concernee || ''
+  ).toLowerCase()
+
+  const numero = String(id).padStart(2, '0')
+
+  if (
+    table === 'courriers_arrives' ||
+    table === 'documents_courriers_arrives'
+  ) {
+    return `COR_ARR${numero}`
+  }
+
+  if (
+    table === 'courriers_depart' ||
+    table === 'documents_courriers_depart'
+  ) {
+    return `COR_DEP${numero}`
+  }
+
+  return `#${id}`
 }
 
 /* ============================================================

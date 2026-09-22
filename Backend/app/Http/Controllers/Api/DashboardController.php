@@ -10,90 +10,138 @@ use App\Models\Utilisateur;
 use App\Models\JournalActivite;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
     /**
      * Afficher les données du tableau de bord.
+     *
+     * Paramètres facultatifs :
+     * - mois : 1 à 12
+     * - annee : année sélectionnée
      */
     public function index(Request $request): JsonResponse
     {
         try {
             /*
             |--------------------------------------------------------------------------
-            | STATISTIQUES COURRIERS ARRIVÉS
+            | VALIDATION MOIS / ANNÉE
             |--------------------------------------------------------------------------
             */
 
-            $totalCourriersArrives = CourrierArrive::count();
+            $validated = $request->validate([
+                'mois' => ['nullable', 'integer', 'between:1,12'],
+                'annee' => ['nullable', 'integer', 'min:2000', 'max:2100'],
+            ]);
 
-            $courriersUrgents = CourrierArrive::where(
-                'priorite',
-                'URGENT'
-            )->count();
-
-            $courriersTresUrgents = CourrierArrive::where(
-                'priorite',
-                'TRES_URGENT'
-            )->count();
-            
-            $courriersNormaux = CourrierArrive::where(
-                'priorite',
-                'NORMAL'
-            )->count();
-
-            $courriersArchives = CourrierArrive::where(
-                'statut_dossier',
-                'Archivé'
-            )->count();
-            
-            $courriersEnCours = CourrierArrive::where(
-                'statut_dossier',
-                'En cours'
-            )->count();
-            
-            $courriersLecture = CourrierArrive::where(
-                'statut_dossier',
-                'Lecture'
-            )->count();
-
+            $mois = (int) ($validated['mois'] ?? now()->month);
+            $annee = (int) ($validated['annee'] ?? now()->year);
 
             /*
             |--------------------------------------------------------------------------
-            | STATISTIQUES COURRIERS DÉPART
+            | PÉRIODE SÉLECTIONNÉE
             |--------------------------------------------------------------------------
             */
 
-            $totalCourriersDepart = CourrierDepart::count();
-
+            $dateDebut = Carbon::create($annee, $mois, 1)->startOfMonth();
+            $dateFin = $dateDebut->copy()->endOfMonth();
 
             /*
             |--------------------------------------------------------------------------
-            | STATISTIQUES DOCUMENTS
+            | COURRIERS ARRIVÉS
             |--------------------------------------------------------------------------
+            |
+            | IMPORTANT :
+            | On utilise date_enreg et non created_at.
+            |
+            */
+
+            $courriersArrivesQuery = CourrierArrive::query()
+                ->whereDate('date_enreg', '>=', $dateDebut->toDateString())
+                ->whereDate('date_enreg', '<=', $dateFin->toDateString());
+
+            $totalCourriersArrives = (clone $courriersArrivesQuery)->count();
+
+            $courriersNormaux = (clone $courriersArrivesQuery)
+                ->where('priorite', 'NORMAL')
+                ->count();
+
+            $courriersUrgents = (clone $courriersArrivesQuery)
+                ->where('priorite', 'URGENT')
+                ->count();
+
+            $courriersTresUrgents = (clone $courriersArrivesQuery)
+                ->where('priorite', 'TRES_URGENT')
+                ->count();
+
+            $courriersArchives = (clone $courriersArrivesQuery)
+                ->where('statut_dossier', 'Archivé')
+                ->count();
+
+            $courriersEnCours = (clone $courriersArrivesQuery)
+                ->where('statut_dossier', 'En cours')
+                ->count();
+
+            $courriersLecture = (clone $courriersArrivesQuery)
+                ->where('statut_dossier', 'Lecture')
+                ->count();
+
+            /*
+            |--------------------------------------------------------------------------
+            | COURRIERS DÉPART
+            |--------------------------------------------------------------------------
+            |
+            | IMPORTANT :
+            | On utilise date_dep et non created_at.
+            |
+            */
+
+            $courriersDepartQuery = CourrierDepart::query()
+                ->whereDate('date_dep', '>=', $dateDebut->toDateString())
+                ->whereDate('date_dep', '<=', $dateFin->toDateString());
+
+            $totalCourriersDepart = (clone $courriersDepartQuery)->count();
+
+            $courriersDepartNormaux = (clone $courriersDepartQuery)
+                ->where('priorite', 'NORMAL')
+                ->count();
+
+            $courriersDepartUrgents = (clone $courriersDepartQuery)
+                ->where('priorite', 'URGENT')
+                ->count();
+
+            $courriersDepartTresUrgents = (clone $courriersDepartQuery)
+                ->where('priorite', 'TRES_URGENT')
+                ->count();
+
+            /*
+            |--------------------------------------------------------------------------
+            | DOCUMENTS
+            |--------------------------------------------------------------------------
+            |
+            | Les documents restent globaux.
+            |
             */
 
             $totalDocuments = DocumentNumerique::count();
 
-
             /*
             |--------------------------------------------------------------------------
-            | STATISTIQUES UTILISATEURS
+            | UTILISATEURS
             |--------------------------------------------------------------------------
+            |
+            | Les utilisateurs restent globaux.
+            |
             */
 
             $totalUtilisateurs = Utilisateur::count();
-
 
             /*
             |--------------------------------------------------------------------------
             | DERNIÈRES ACTIVITÉS
             |--------------------------------------------------------------------------
-            |
-            | JournalActivite utilise :
-            | - primary key : id_journal
-            | - created_at   : date de création
-            |
             */
 
             $activites = JournalActivite::query()
@@ -114,28 +162,74 @@ class DashboardController extends Controller
                 })
                 ->values();
 
+            /*
+            |--------------------------------------------------------------------------
+            | ÉVOLUTION JOURNALIÈRE
+            |--------------------------------------------------------------------------
+            */
+
+            $nombreJours = $dateDebut->daysInMonth;
 
             /*
             |--------------------------------------------------------------------------
-            | EVOLUTION DES COURRIERS (6 derniers mois)
+            | COURRIERS ARRIVÉS PAR JOUR
+            |--------------------------------------------------------------------------
+            |
+            | PostgreSQL :
+            | DATE(date_enreg) permet de regrouper par jour.
+            |
+            */
+
+            $arrivesParJour = CourrierArrive::query()
+                ->whereDate('date_enreg', '>=', $dateDebut->toDateString())
+                ->whereDate('date_enreg', '<=', $dateFin->toDateString())
+                ->selectRaw('DATE(date_enreg) as jour, COUNT(*) as total')
+                ->groupBy(DB::raw('DATE(date_enreg)'))
+                ->pluck('total', 'jour');
+
+            /*
+            |--------------------------------------------------------------------------
+            | COURRIERS DÉPART PAR JOUR
             |--------------------------------------------------------------------------
             */
-            $months = [];
+
+            $departParJour = CourrierDepart::query()
+                ->whereDate('date_dep', '>=', $dateDebut->toDateString())
+                ->whereDate('date_dep', '<=', $dateFin->toDateString())
+                ->selectRaw('DATE(date_dep) as jour, COUNT(*) as total')
+                ->groupBy(DB::raw('DATE(date_dep)'))
+                ->pluck('total', 'jour');
+
+            /*
+            |--------------------------------------------------------------------------
+            | CONSTRUCTION DES DONNÉES DU GRAPHIQUE
+            |--------------------------------------------------------------------------
+            */
+
+            $labels = [];
             $arrivesData = [];
             $departData = [];
 
-            for ($i = 5; $i >= 0; $i--) {
-                $date = now()->subMonths($i);
-                $monthLabel = $date->translatedFormat('M Y');
-                $months[] = ucfirst($monthLabel);
-                
-                $arrivesData[] = CourrierArrive::whereYear('created_at', $date->year)
-                                               ->whereMonth('created_at', $date->month)
-                                               ->count();
-                                               
-                $departData[] = CourrierDepart::whereYear('created_at', $date->year)
-                                              ->whereMonth('created_at', $date->month)
-                                              ->count();
+            for ($jour = 1; $jour <= $nombreJours; $jour++) {
+
+                $date = $dateDebut->copy()->day($jour);
+
+                $dateCle = $date->format('Y-m-d');
+
+                $labels[] = str_pad(
+                    (string) $jour,
+                    2,
+                    '0',
+                    STR_PAD_LEFT
+                );
+
+                $arrivesData[] = (int) (
+                    $arrivesParJour[$dateCle] ?? 0
+                );
+
+                $departData[] = (int) (
+                    $departParJour[$dateCle] ?? 0
+                );
             }
 
             /*
@@ -150,17 +244,25 @@ class DashboardController extends Controller
                 'message' => 'Données du tableau de bord récupérées avec succès.',
 
                 'data' => [
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | STATISTIQUES PRINCIPALES
+                    |--------------------------------------------------------------------------
+                    */
+
                     'statistiques' => [
                         'courriers_arrives' => $totalCourriersArrives,
                         'courriers_depart' => $totalCourriersDepart,
                         'documents' => $totalDocuments,
                         'utilisateurs' => $totalUtilisateurs,
-                        'urgents' => $courriersUrgents,
-                        'tres_urgents' => $courriersTresUrgents,
-                        'archives' => $courriersArchives,
-                        'en_cours' => $courriersEnCours,
-                        'lecture' => $courriersLecture,
                     ],
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | STATUTS
+                    |--------------------------------------------------------------------------
+                    */
 
                     'statuts' => [
                         'en_cours' => $courriersEnCours,
@@ -168,17 +270,49 @@ class DashboardController extends Controller
                         'archives' => $courriersArchives,
                     ],
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | PRIORITÉS COURRIERS ARRIVÉS
+                    |--------------------------------------------------------------------------
+                    */
+
                     'priorites' => [
                         'normal' => $courriersNormaux,
                         'urgent' => $courriersUrgents,
                         'tres_urgent' => $courriersTresUrgents,
                     ],
 
+                    /*
+                    |--------------------------------------------------------------------------
+                    | PRIORITÉS COURRIERS DÉPART
+                    |--------------------------------------------------------------------------
+                    */
+
+                    'priorites_depart' => [
+                        'normal' => $courriersDepartNormaux,
+                        'urgent' => $courriersDepartUrgents,
+                        'tres_urgent' => $courriersDepartTresUrgents,
+                    ],
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | ÉVOLUTION
+                    |--------------------------------------------------------------------------
+                    */
+
                     'evolution' => [
-                        'labels' => $months,
+                        'mois' => $mois,
+                        'annee' => $annee,
+                        'labels' => $labels,
                         'arrives' => $arrivesData,
                         'depart' => $departData,
                     ],
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | ACTIVITÉS
+                    |--------------------------------------------------------------------------
+                    */
 
                     'activites' => $activites,
                 ],
@@ -186,21 +320,11 @@ class DashboardController extends Controller
 
         } catch (\Throwable $e) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | GESTION DES ERREURS
-            |--------------------------------------------------------------------------
-            */
-
             return response()->json([
                 'success' => false,
-
                 'message' => 'Erreur lors du chargement du tableau de bord.',
-
                 'error' => $e->getMessage(),
-
                 'file' => $e->getFile(),
-
                 'line' => $e->getLine(),
             ], 500);
         }
