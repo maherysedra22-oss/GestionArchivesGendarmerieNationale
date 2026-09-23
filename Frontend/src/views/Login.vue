@@ -170,10 +170,9 @@ onMounted(() => {
 
           <div class="brand-mark">
             <div class="brand-mark-inner">
-              GN
+              <img src="@/assets/logoGn.jpg" alt="Gendarmerie Nationale" />
             </div>
 
-            <span class="brand-status"></span>
           </div>
 
           <div class="brand-text">
@@ -293,7 +292,7 @@ onMounted(() => {
         <div class="mobile-brand">
 
           <div class="mobile-brand-mark">
-            GN
+            <img src="@/assets/logoGn.jpg" alt="Gendarmerie Nationale" />
           </div>
 
           <div class="mobile-brand-text">
@@ -848,18 +847,7 @@ onMounted(() => {
 
   border-radius: 18px;
 
-  background:
-    linear-gradient(
-      145deg,
-      var(--gold-light),
-      var(--gold)
-    );
-
-  box-shadow:
-    0 14px 35px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
-
-  transform: rotate(-3deg);
+  background: white;
 }
 
 .brand-mark-inner {
@@ -870,7 +858,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
 
-  border: 1px solid rgba(6, 27, 50, 0.2);
+  border: 1px solid white;
   border-radius: 14px;
 
   color: var(--navy-900);
@@ -878,28 +866,27 @@ onMounted(() => {
   font-size: 15px;
   font-weight: 900;
 
-  transform: rotate(3deg);
+  transform: rotate(0deg);
 }
 
-.brand-status {
-  position: absolute;
-
-  width: 10px;
-  height: 10px;
-
-  right: -3px;
-  bottom: 5px;
-
-  border-radius: 50%;
-
-  background: #54c982;
-
-  border: 2px solid var(--navy-900);
-}
 
 .brand-text {
   display: flex;
   flex-direction: column;
+}
+
+.brand-mark-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.mobile-brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-country {
@@ -1995,6 +1982,27 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
     box-shadow:
       0 7px 18px rgba(6, 27, 50, 0.12);
   }
+  .brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 64px;
+  height: 64px;
+
+  overflow: hidden;
+  transform: none;
+  animation: none;
+}
+
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+
+  transform: none;
+  animation: none;
+}
 
   .mobile-brand-text {
     display: flex;

@@ -3552,6 +3552,7 @@ button.status-button:disabled {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
+  background: #08264d;
   padding: 20px 22px;
   border-bottom: 1px solid #edf0f4;
 }
@@ -3570,7 +3571,7 @@ button.status-button:disabled {
   justify-content: center;
   border-radius: 11px;
   background: #eff6ff;
-  color: #2563eb;
+  color: #1202f3;
 }
 
 .permission-icon {
@@ -3580,13 +3581,13 @@ button.status-button:disabled {
 
 .modal-header h2 {
   margin: 0;
-  color: #172033;
+  color: #fafafc;
   font-size: 18px;
 }
 
 .modal-header p {
   margin: 4px 0 0;
-  color: #7b8494;
+  color: #ebeef3;
   font-size: 12px;
 }
 

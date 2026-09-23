@@ -22,7 +22,8 @@ import {
   X,
   ChevronRight,
   Shield,
-  Clock
+  Clock,
+  UserRound
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -275,10 +276,11 @@ const logout = async () => {
 
         <div class="brand">
           <div class="logo">
-            <Shield
-              :size="22"
-              :stroke-width="2.4"
-            />
+                <img
+                  src="/images/logoGn.jpg"
+                  alt="Logo Gendarmerie Nationale"
+                  class="logo-image"
+                />
           </div>
 
           <div class="brand-text">
@@ -474,7 +476,8 @@ const logout = async () => {
           </div>
 
           <div class="topbar-avatar">
-            {{ initiales }}
+            <UserRound :size="22" :stroke-width="2" />
+            <span class="brand-status"></span>
           </div>
 
         </div>
@@ -565,14 +568,23 @@ const logout = async () => {
   justify-content: center;
 
   flex-shrink: 0;
+  overflow: hidden;
+
   border-radius: 12px;
+  background: #ffffff;
 
-  background: #d5b45c;
-  color: #08264d;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
 
-  box-shadow:
-    0 5px 15px
-    rgba(0, 0, 0, 0.15);
+.logo-image {
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+  display: block;
+
+  transform: none;
+  animation: none;
 }
 
 .brand-text {
@@ -790,7 +802,7 @@ const logout = async () => {
 }
 
 .sidebar-logout:hover {
-  background: #b91c1c;
+  background: #243b53;
   transform: translateY(-1px);
 }
 
@@ -825,7 +837,7 @@ const logout = async () => {
   padding: 0 32px;
 
   background:
-    rgba(255, 255, 255, 0.96);
+    rgba(239, 238, 241, 0.96);
 
   backdrop-filter: blur(10px);
 
@@ -927,8 +939,9 @@ const logout = async () => {
   color: #829ab1;
   font-size: 10px;
 }
-
 .topbar-avatar {
+  position: relative;
+
   width: 43px;
   height: 43px;
 
@@ -939,18 +952,28 @@ const logout = async () => {
   flex-shrink: 0;
   border-radius: 50%;
 
-  background:
-    linear-gradient(
-      135deg,
-      #eef3f8,
-      #dfe8f1
-    );
+  background: linear-gradient(
+    135deg,
+    #eef3f8,
+    #dfe8f1
+  );
 
   color: #08264d;
-  font-size: 12px;
-  font-weight: 900;
-
   border: 2px solid #d5b45c;
+}
+
+.brand-status {
+  position: absolute;
+
+  width: 10px;
+  height: 10px;
+
+  right: -2px;
+  bottom: 0;
+
+  border-radius: 50%;
+  background: #02ed02;
+  border: 2px solid white;
 }
 
 /* =========================================================

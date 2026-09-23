@@ -979,7 +979,7 @@
                 @click="form.statut_dossier = 'Archivé'"
                 :aria-pressed="form.statut_dossier === 'Archivé'"
               >
-                <span class="choice-icon">▣</span>
+                <span class="choice-icon">⛁</span>
 
                 <span class="choice-content">
                   <strong>Archivé</strong>
@@ -1001,7 +1001,7 @@
           ======================================================== -->
           <div class="form-section">
             <div class="section-heading">
-              <div class="section-icon">▣</div>
+              <div class="section-icon">🗎</div>
 
               <div>
                 <h3>Documents numériques</h3>
@@ -1644,7 +1644,7 @@
         <div class="modal-header">
           <div class="modal-title-wrapper">
             <div class="modal-title-icon">
-              <span>◉</span>
+              <span>📃</span>
             </div>
 
             <div>
@@ -2142,7 +2142,7 @@
                 )
               "
             >
-              <span>⇩</span>
+              <span><Download :size="16" /></span>
               <span>Télécharger</span>
             </button>
 
@@ -2156,7 +2156,7 @@
                 previewDocumentData
               )"
             >
-              <span>🗑</span>
+              <span><Trash2 :size="17" /></span>
               <span>Supprimer</span>
             </button>
 
@@ -6031,7 +6031,7 @@ tbody tr:last-child td {
 
   border-bottom: 1px solid var(--border);
 
-  background: #ffffff;
+  background: #08264d;
 }
 
 .modal-title-wrapper {
@@ -6062,6 +6062,7 @@ tbody tr:last-child td {
 
 .modal-header h2 {
   margin: 0 0 4px;
+  color: white;
 
   font-size: 19px;
   font-weight: 800;

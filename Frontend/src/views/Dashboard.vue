@@ -1655,7 +1655,7 @@ function renderCharts() {
 
               data: departs,
 
-              borderColor: '#10aa9b',
+              borderColor: '#02ed02',
 
               backgroundColor:
                 'rgba(16, 170, 155, 0.08)',
@@ -3166,7 +3166,7 @@ h1 {
 
 
 .teal-dot {
-  background: #10aa9b;
+  background: #02ed02;
 }
 
 

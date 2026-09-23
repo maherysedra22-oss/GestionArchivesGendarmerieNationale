@@ -2085,7 +2085,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   border-radius: 13px;
-  background: #ffffff;
+  background: #08264d;
   box-shadow: 0 25px 70px rgba(15, 23, 42, .25);
 }
 
@@ -2099,8 +2099,8 @@ onBeforeUnmount(() => {
 }
 
 .preview-header span {
-  color: #64748b;
-  font-size: 11px;
+  color: #f9f9f9;
+  font-size: 12px;
 }
 
 .preview-header h3 {

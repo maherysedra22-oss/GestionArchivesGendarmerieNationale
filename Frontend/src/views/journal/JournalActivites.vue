@@ -2837,6 +2837,7 @@ onBeforeUnmount(() => {
   min-height: 70px;
   padding: 13px 18px;
   box-sizing: border-box;
+  background: #08264d;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2857,20 +2858,20 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   border-radius: 10px;
-  color: #2563eb;
+  color: #2004f8;
   background: #eff6ff;
 }
 
 .modal-title h3 {
   margin: 0;
-  color: #172033;
+  color: #eaecf0;
   font-size: 15px;
 }
 
 .modal-title span {
   display: block;
   margin-top: 3px;
-  color: #9ca3af;
+  color: #dee2e9;
   font-size: 11px;
 }
 
@@ -2882,8 +2883,8 @@ onBeforeUnmount(() => {
   justify-content: center;
   border: 0;
   border-radius: 8px;
-  background: transparent;
-  color: #64748b;
+  background: white;
+  color: #110aea;
   cursor: pointer;
 }
 
@@ -2995,8 +2996,8 @@ onBeforeUnmount(() => {
   padding: 0 16px;
   border: 1px solid #dce2ea;
   border-radius: 9px;
-  background: #fff;
-  color: #374151;
+  background: #f7f7f7;
+  color: #3504f8;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;

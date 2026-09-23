@@ -665,8 +665,8 @@
           <div>
             <h2>
               {{ modeFormulaire === 'creation'
-                ? 'Nouveau courrier départ'
-                : 'Modifier le courrier départ' }}
+                ? '✚ Nouveau courrier départ'
+                : '✎ Modifier le courrier départ' }}
             </h2>
 
             <p>
@@ -1292,7 +1292,7 @@
               {{ formatNumeroCourrier(courrierSelectionne?.num_ordre_dep) }}
             </div>
 
-            <h2>Détails du courrier</h2>
+            <h2>📃Détails du courrier</h2>
 
             <p>
               Informations complètes du courrier départ
@@ -5908,6 +5908,7 @@ tbody tr:hover {
 
 .modal-header {
   padding: 20px 22px;
+  background: #08264d;
   border-bottom: 1px solid #edf0f4;
   display: flex;
   justify-content: space-between;
@@ -5917,7 +5918,7 @@ tbody tr:hover {
 
 .modal-header h2 {
   margin: 0 0 4px;
-  color: #172033;
+  color: white;
   font-size: 17px;
 }
 

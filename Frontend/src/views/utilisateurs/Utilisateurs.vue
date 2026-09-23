@@ -831,8 +831,8 @@
                       <div class="switch-card-content">
                         <strong>Changement de mot de passe requis</strong>
                         <span>
-                          Demander à l’utilisateur de modifier son mot de
-                          passe lors de sa prochaine connexion.
+                          Demander à l’utilisateur de modifier son mot de passe lors de sa prochaine connexion.
+                          Mot de passe par défaut : Gendarmerie123
                         </span>
                       </div>
 
@@ -933,7 +933,7 @@
 
               <div class="detail-profile">
                 <div class="detail-avatar">
-                  {{ getInitials(selectedUser) }}
+                  <UserRound class="banner-user-icon" />
                 </div>
 
                 <div class="detail-profile-info">
@@ -967,15 +967,7 @@
                   </div>
                 </div>
 
-                <button
-                  v-if="canUpdate"
-                  class="detail-edit-button"
-                  type="button"
-                  @click="editFromDetail"
-                >
-                  <Pencil :size="16" />
-                  Modifier
-                </button>
+
               </div>
             </div>
 
@@ -4472,33 +4464,11 @@ onUnmounted(() => {
 }
 
 .modal-create .form-modal-header {
-  background:
-    radial-gradient(
-      circle at 90% 0%,
-      rgba(34, 211, 238, 0.32),
-      transparent 35%
-    ),
-    linear-gradient(
-      135deg,
-      #0f2747,
-      #2563eb 72%,
-      #0891b2
-    );
+  background:#08264d;
 }
 
 .modal-edit .form-modal-header {
-  background:
-    radial-gradient(
-      circle at 90% 0%,
-      rgba(167, 139, 250, 0.32),
-      transparent 35%
-    ),
-    linear-gradient(
-      135deg,
-      #0f2747,
-      #6d28d9 70%,
-      #4f46e5
-    );
+  background:#08264d;
 }
 
 .form-header-left {
@@ -4704,7 +4674,7 @@ onUnmounted(() => {
   display: block;
   margin-top: 3px;
   color: var(--secondary);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -4854,168 +4824,219 @@ onUnmounted(() => {
 }
 
 /* ============================================================
-   DETAIL MODAL
+   DETAIL MODAL — COMPACT & MODERN
 ============================================================ */
 
 .detail-modal {
-  width: min(960px, 100%);
+  width: min(900px, 100%);
 }
+
+/* ============================================================
+   BANNER
+============================================================ */
 
 .detail-banner {
   position: relative;
-  min-height: 188px;
-  padding: 25px 28px;
+  min-height: 145px;
+  padding: 20px 24px;
   display: flex;
   align-items: flex-end;
   overflow: hidden;
   color: white;
-  background:
-    radial-gradient(
-      circle at 90% 10%,
-      rgba(34,211,238,0.3),
-      transparent 30%
-    ),
-    linear-gradient(
-      135deg,
-      #0f2747,
-      #1d4ed8 75%,
-      #0891b2
-    );
+  background: #08264d;
 }
 
 .detail-banner-pattern {
   position: absolute;
   inset: 0;
-  opacity: 0.1;
+  opacity: 0.07;
   background-image:
     linear-gradient(
       135deg,
       transparent 25%,
-      rgba(255,255,255,0.15) 25%,
-      rgba(255,255,255,0.15) 26%,
+      rgba(255, 255, 255, 0.15) 25%,
+      rgba(255, 255, 255, 0.15) 26%,
       transparent 26%
     );
-  background-size: 36px 36px;
+  background-size: 30px 30px;
 }
+
+/* ============================================================
+   CLOSE BUTTON
+============================================================ */
 
 .detail-close {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  background: white;
+  color: darkblue;
+  top: 13px;
+  right: 13px;
+  z-index: 3;
 }
+
+/* ============================================================
+   PROFILE
+============================================================ */
 
 .detail-profile {
   position: relative;
+  z-index: 2;
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 17px;
+  gap: 14px;
 }
 
 .detail-avatar {
-  width: 74px;
-  height: 74px;
+  width: 62px;
+  height: 62px;
   flex-shrink: 0;
+
   display: grid;
   place-items: center;
+
   color: #0f2747;
-  background: rgb(221, 213, 213);
-  border: 4px solid rgba(255,255,255,0.3);
-  border-radius: 20px;
-  font-size: 20px;
-  font-weight: 900;
-  box-shadow:
-    0 10px 25px rgba(15,23,42,0.2);
+  background: #f1f5f9;
+
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+
+  font-size: 18px;
+  font-weight: 850;
+
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.18);
 }
 
 .detail-profile-info {
   min-width: 0;
+  padding-right: 5px;
 }
 
 .detail-profile-info h2 {
   margin: 0;
-  font-size: 25px;
-  font-weight: 850;
-  letter-spacing: -0.025em;
+
+  color: #ffffff;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .detail-meta {
-  margin-top: 7px;
+  margin-top: 6px;
+
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .detail-meta > span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: rgba(255,255,255,0.76);
-  font-size: 11px;
+
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
 }
 
 .detail-status {
-  padding: 5px 8px;
+  padding: 4px 7px;
   border-radius: 999px;
 }
 
 .detail-status-active {
   color: #dcfce7 !important;
-  background: rgba(22,163,74,0.2);
+  background: rgba(22, 163, 74, 0.2);
 }
 
 .detail-status-inactive {
   color: #fee2e2 !important;
-  background: rgba(220,38,38,0.2);
+  background: rgba(220, 38, 38, 0.2);
 }
+
+/* ============================================================
+   EDIT BUTTON IN BANNER
+============================================================ */
 
 .detail-edit-button {
   margin-left: auto;
-  min-height: 38px;
-  padding: 0 13px;
+
+  min-height: 34px;
+  padding: 0 11px;
+
+
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+
+  flex-shrink: 0;
+
   color: white;
-  background: rgba(255,255,255,0.13);
-  border: 1px solid rgba(255,255,255,0.22);
-  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.12);
+
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+
   font: inherit;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 750;
+
   cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 }
 
 .detail-edit-button:hover {
-  background: rgba(255,255,255,0.22);
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
+
+/* ============================================================
+   BODY
+============================================================ */
 
 .detail-body {
-  max-height: calc(92vh - 260px);
+  max-height: calc(92vh - 215px);
+
   overflow-y: auto;
-  padding: 25px 28px;
+
+  padding: 18px 24px;
+
+  scrollbar-width: thin;
 }
 
+/* ============================================================
+   SECTIONS
+============================================================ */
+
 .detail-section + .detail-section {
-  margin-top: 25px;
-  padding-top: 24px;
+  margin-top: 18px;
+  padding-top: 18px;
   border-top: 1px solid var(--border);
 }
 
 .detail-section-heading {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 15px;
+  gap: 9px;
+  margin-bottom: 10px;
 }
 
 .detail-heading-icon {
-  width: 37px;
-  height: 37px;
+  width: 32px;
+  height: 32px;
+
   display: grid;
   place-items: center;
-  border-radius: 10px;
+
+  border-radius: 8px;
 }
 
 .detail-heading-icon.blue {
@@ -5035,41 +5056,64 @@ onUnmounted(() => {
 
 .detail-section-heading h3 {
   margin: 0;
-  font-size: 14px;
+
+  font-size: 13px;
+  line-height: 1.2;
   font-weight: 800;
 }
 
 .detail-section-heading p {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
+
   color: var(--secondary);
-  font-size: 10px;
+  font-size: 9px;
 }
+
+/* ============================================================
+   INFORMATIONS
+============================================================ */
 
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .detail-info-card,
 .access-detail-card {
-  min-height: 72px;
-  padding: 12px;
+  min-height: 62px;
+
+  padding: 9px 10px;
+
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 9px;
+
   background: #f8fafc;
   border: 1px solid #e5eaf0;
-  border-radius: 12px;
+  border-radius: 10px;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.detail-info-card:hover,
+.access-detail-card:hover {
+  background: #f9fbfd;
+  border-color: #dbe3ec;
 }
 
 .detail-info-icon {
-  width: 38px;
-  height: 38px;
+  width: 33px;
+  height: 33px;
+
   flex-shrink: 0;
+
   display: grid;
   place-items: center;
-  border-radius: 10px;
+
+  border-radius: 8px;
 }
 
 .detail-info-icon.blue {
@@ -5096,11 +5140,15 @@ onUnmounted(() => {
 .access-detail-card span,
 .activity-item span {
   display: block;
-  margin-bottom: 3px;
+
+  margin-bottom: 2px;
+
   color: #94a3b8;
-  font-size: 9px;
+
+  font-size: 8px;
   font-weight: 750;
-  letter-spacing: 0.05em;
+
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -5108,8 +5156,11 @@ onUnmounted(() => {
 .access-detail-card strong,
 .activity-item strong {
   display: block;
+
   color: var(--text);
-  font-size: 12px;
+
+  font-size: 11px;
+  line-height: 1.35;
   font-weight: 750;
 }
 
@@ -5117,23 +5168,31 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
+/* ============================================================
+   ACCÈS / COMPTE
+============================================================ */
+
 .access-detail-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .access-detail-card {
-  align-items: flex-start;
+  min-height: 58px;
+  align-items: center;
 }
 
 .access-card-icon {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
+
   flex-shrink: 0;
+
   display: grid;
   place-items: center;
-  border-radius: 9px;
+
+  border-radius: 8px;
 }
 
 .role-card .access-card-icon {
@@ -5156,21 +5215,30 @@ onUnmounted(() => {
   background: #ffedd5;
 }
 
+/* ============================================================
+   ACTIVITÉS
+============================================================ */
+
 .activity-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .activity-item {
-  padding: 13px;
+  min-height: 54px;
+
+  padding: 9px 10px;
+
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+
   color: var(--blue);
+
   background: #f8fafc;
   border: 1px solid #e5eaf0;
-  border-radius: 11px;
+  border-radius: 9px;
 }
 
 .activity-item > div {
@@ -5183,35 +5251,142 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+/* ============================================================
+   FOOTER
+============================================================ */
+
 .detail-footer {
-  min-height: 70px;
-  padding: 13px 28px;
+  min-height: 58px;
+
+  padding: 10px 24px;
+
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+
   background: #f8fafc;
   border-top: 1px solid var(--border);
 }
 
+/* ============================================================
+   EDIT BUTTON
+============================================================ */
+
 .btn-detail-edit {
   color: white;
-  background: #2563EB;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-  transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  background: #2563eb;
+
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.18);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .btn-detail-edit:hover:not(:disabled) {
-  background: #1D4ED8;
+  background: #1d4ed8;
+
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+
+  box-shadow: 0 5px 12px rgba(37, 99, 235, 0.22);
 }
 
 .btn-detail-edit:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.18);
 }
 
+/* ============================================================
+   RESPONSIVE
+============================================================ */
+
+@media (max-width: 760px) {
+
+  .detail-banner {
+    min-height: 135px;
+    padding: 18px;
+  }
+
+  .detail-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+  }
+
+  .detail-profile-info h2 {
+    font-size: 18px;
+  }
+
+  .detail-body {
+    padding: 16px 18px;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .access-detail-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .activity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-footer {
+    padding: 10px 18px;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .detail-banner {
+    min-height: 125px;
+    padding: 16px;
+  }
+
+  .detail-profile {
+    gap: 10px;
+  }
+
+  .detail-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 13px;
+  }
+
+  .detail-profile-info h2 {
+    max-width: 180px;
+    font-size: 16px;
+  }
+
+  .detail-edit-button {
+    width: 34px;
+    min-width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .detail-edit-button span {
+    display: none;
+  }
+
+  .detail-body {
+    padding: 14px;
+  }
+
+  .access-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-footer {
+    min-height: 54px;
+    padding: 8px 14px;
+  }
+}
 /* ============================================================
    CONFIRM MODALS
 ============================================================ */
@@ -5998,12 +6173,7 @@ onUnmounted(() => {
   gap: 15px;
   padding: 25px 25px 20px;
   border-bottom: 1px solid #eef2f7;
-  background:
-    linear-gradient(
-      135deg,
-      #f8fafc 0%,
-      #ffffff 65%
-    );
+  background:#08264d;
 }
 
 .reset-password-icon {
@@ -6025,7 +6195,7 @@ onUnmounted(() => {
 
 .reset-password-header h2 {
   margin: 3px 40px 5px 0;
-  color: #0f172a;
+  color: #fefefe;
   font-size: 21px;
   line-height: 1.25;
   font-weight: 750;
@@ -6033,7 +6203,7 @@ onUnmounted(() => {
 
 .reset-password-header p {
   margin: 0;
-  color: #64748b;
+  color: #d9d9da;
   font-size: 13px;
   line-height: 1.55;
 }
