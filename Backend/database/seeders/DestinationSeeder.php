@@ -11,43 +11,27 @@ class DestinationSeeder extends Seeder
     {
         $destinations = [
             [
-                'lib_officiel_desti' => 'Commandement de la Gendarmerie Nationale',
+                'lib_officiel_desti' => 'DSIT/SEDI',
                 'actif' => true,
             ],
             [
-                'lib_officiel_desti' => 'Ministère de la Défense Nationale',
+                'lib_officiel_desti' => 'DSIT',
                 'actif' => true,
             ],
             [
-                'lib_officiel_desti' => 'Ministère de la Justice',
+                'lib_officiel_desti' => 'COM/DQG/SAG',
                 'actif' => true,
             ],
             [
-                'lib_officiel_desti' => 'Ministère de l’Intérieur',
+                'lib_officiel_desti' => 'MDG/CAB',
                 'actif' => true,
             ],
             [
-                'lib_officiel_desti' => 'Préfecture',
+                'lib_officiel_desti' => 'SG/DRH',
                 'actif' => true,
             ],
             [
-                'lib_officiel_desti' => 'Tribunal',
-                'actif' => true,
-            ],
-            [
-                'lib_officiel_desti' => 'Brigade de Gendarmerie',
-                'actif' => true,
-            ],
-            [
-                'lib_officiel_desti' => 'Groupement de Gendarmerie',
-                'actif' => true,
-            ],
-            [
-                'lib_officiel_desti' => 'Région de Gendarmerie',
-                'actif' => true,
-            ],
-            [
-                'lib_officiel_desti' => 'Autre',
+                'lib_officiel_desti' => 'DSR',
                 'actif' => true,
             ],
         ];

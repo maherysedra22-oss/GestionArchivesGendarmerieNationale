@@ -1323,12 +1323,12 @@ async function downloadDocument(item) {
             item.courrierId
           )}/documents/${encodeURIComponent(
             item.documentId
-          )}/download`
+          )}/download?_t=${Date.now()}`
         : `${DEPARTS_ENDPOINT}/${encodeURIComponent(
             item.courrierId
           )}/documents/${encodeURIComponent(
             item.documentId
-          )}/download`
+          )}/download?_t=${Date.now()}`
 
     const { response } =
       await apiRequest(

@@ -16,11 +16,18 @@ class JournalActiviteController extends Controller
     {
         $query = JournalActivite::query()
             ->with('utilisateur')
-            ->orderByDesc('created_at');
+            ->where(function ($q) {
+                $q->whereNull('action')
+                    ->orWhereRaw('UPPER(action) <> ?', ['UPLOAD']);
+            })
+            ->orderByDesc('created_at')
+            ->orderByDesc('id_journal');
 
-        // =========================================================
-        // RECHERCHE GLOBALE
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Recherche globale
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
 
@@ -33,9 +40,11 @@ class JournalActiviteController extends Controller
             });
         }
 
-        // =========================================================
-        // FILTRE UTILISATEUR
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre utilisateur
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('id_utilisateur')) {
             $query->where(
                 'id_utilisateur',
@@ -43,9 +52,11 @@ class JournalActiviteController extends Controller
             );
         }
 
-        // =========================================================
-        // FILTRE ACTION
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre action
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('action')) {
             $query->where(
                 'action',
@@ -53,9 +64,11 @@ class JournalActiviteController extends Controller
             );
         }
 
-        // =========================================================
-        // FILTRE TABLE CONCERNEE
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre table
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('table_concernee')) {
             $query->where(
                 'table_concernee',
@@ -63,9 +76,11 @@ class JournalActiviteController extends Controller
             );
         }
 
-        // =========================================================
-        // DATE DEBUT
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre date début
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('date_debut')) {
             $query->whereDate(
                 'created_at',
@@ -74,9 +89,11 @@ class JournalActiviteController extends Controller
             );
         }
 
-        // =========================================================
-        // DATE FIN
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Filtre date fin
+        |--------------------------------------------------------------------------
+        */
         if ($request->filled('date_fin')) {
             $query->whereDate(
                 'created_at',
@@ -85,9 +102,11 @@ class JournalActiviteController extends Controller
             );
         }
 
-        // =========================================================
-        // STATISTIQUES GLOBALES SUR LES RESULTATS FILTRES
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Statistiques
+        |--------------------------------------------------------------------------
+        */
         $statisticsQuery = clone $query;
 
         $totalActivites = (clone $statisticsQuery)->count();
@@ -102,20 +121,36 @@ class JournalActiviteController extends Controller
             ->distinct('table_concernee')
             ->count('table_concernee');
 
-        // =========================================================
-        // PAGINATION
-        // =========================================================
+        /*
+        |--------------------------------------------------------------------------
+        | Pagination
+        |--------------------------------------------------------------------------
+        */
         $perPage = (int) $request->input('per_page', 15);
 
-        if (!in_array($perPage, [10, 15, 25, 50, 100], true)) {
+        $allowedPerPage = [10, 15, 20, 25, 50, 100];
+
+        if (!in_array($perPage, $allowedPerPage, true)) {
             $perPage = 15;
         }
 
-        $journal = $query->paginate($perPage);
+        $page = max(
+            1,
+            (int) $request->input('page', 1)
+        );
 
-        // =========================================================
-        // REPONSE
-        // =========================================================
+        $journal = $query->paginate(
+            $perPage,
+            ['*'],
+            'page',
+            $page
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Réponse
+        |--------------------------------------------------------------------------
+        */
         return response()->json([
             'success' => true,
 

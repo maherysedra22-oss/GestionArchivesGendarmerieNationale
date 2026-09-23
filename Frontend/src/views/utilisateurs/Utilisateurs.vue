@@ -250,7 +250,7 @@
               <td>
                 <div class="user-cell">
                   <div class="avatar">
-                    {{ getInitials(user) }}
+                    <UserRound :size="22" :stroke-width="2" />
                   </div>
 
                   <div class="user-identity">
@@ -262,7 +262,7 @@
 
               <td>
                 <span class="matricule">
-                  <Hash :size="14" />
+                  
                   {{ user.matricule || '—' }}
                 </span>
               </td>

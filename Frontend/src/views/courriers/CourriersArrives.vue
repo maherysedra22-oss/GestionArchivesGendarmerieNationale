@@ -766,7 +766,7 @@
                   </span>
                 </div>
 
-                <span class="locked-icon">🔒</span>
+                <span class="locked-icon">🔒︎</span>
               </div>
 
               <small class="field-help">
@@ -4212,10 +4212,11 @@ async function downloadDocument(doc) {
     }
 
     const response = await fetch(
-      `${API_URL}${COURRIERS_ENDPOINT}/${courrierId}/documents/${numDoc}/download`,
+      `${API_URL}${COURRIERS_ENDPOINT}/${courrierId}/documents/${numDoc}/download?_t=${Date.now()}`,
       {
         method: 'GET',
         headers: authHeaders(),
+        cache: 'no-store',
       }
     )
 

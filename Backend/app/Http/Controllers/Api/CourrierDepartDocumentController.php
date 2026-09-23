@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CourrierDepart;
+use App\Models\DocumentNumerique;
 use App\Services\JournalActiviteService;
 use Illuminate\Http\Request;
-
-use App\Models\DocumentNumerique;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
@@ -105,6 +104,7 @@ class CourrierDepartDocumentController extends Controller
                 $documentExistant->num_doc
             );
 
+            // Journaliser uniquement l'association
             JournalActiviteService::enregistrer(
                 'ATTACH',
                 'documents_courriers_depart',
@@ -161,7 +161,12 @@ class CourrierDepartDocumentController extends Controller
             $document->num_doc
         );
 
-        // 9. Journaliser l'action
+        /*
+         * IMPORTANT :
+         * On ne journalise PAS "UPLOAD".
+         *
+         * L'action enregistrée ici est uniquement ATTACH.
+         */
         JournalActiviteService::enregistrer(
             'ATTACH',
             'documents_courriers_depart',
@@ -175,7 +180,7 @@ class CourrierDepartDocumentController extends Controller
             ]
         );
 
-        // 10. Retourner le document créé
+        // 9. Retourner le document créé
         return response()->json([
             'success' => true,
             'message' => 'Document ajouté au courrier départ avec succès.',
@@ -252,6 +257,17 @@ class CourrierDepartDocumentController extends Controller
 
     /**
      * Télécharger / prévisualiser un document d'un courrier départ
+     *
+     * IMPORTANT :
+     * Chaque appel à cette méthode crée une nouvelle activité DOWNLOAD.
+     *
+     * Exemple :
+     *
+     * 1er téléchargement → DOWNLOAD
+     * 2e téléchargement → DOWNLOAD
+     * 3e téléchargement → DOWNLOAD
+     *
+     * Aucune déduplication n'est effectuée.
      */
     public function download(int $id, int $numDoc)
     {
@@ -268,7 +284,10 @@ class CourrierDepartDocumentController extends Controller
         // 2. Rechercher le document associé au courrier
         $document = $courrierDepart
             ->documents()
-            ->where('documents_numeriques.num_doc', $numDoc)
+            ->where(
+                'documents_numeriques.num_doc',
+                $numDoc
+            )
             ->first();
 
         if (!$document) {
@@ -279,7 +298,9 @@ class CourrierDepartDocumentController extends Controller
         }
 
         // 3. Vérifier le fichier physique
-        $chemin = storage_path('app/public/' . $document->chemin);
+        $chemin = storage_path(
+            'app/public/' . $document->chemin
+        );
 
         if (!file_exists($chemin)) {
             return response()->json([
@@ -289,12 +310,51 @@ class CourrierDepartDocumentController extends Controller
             ], 404);
         }
 
-        // 4. Afficher le document dans le navigateur
+        // 4. Préparer la référence du courrier
+        $reference = 'COR_DEP' . str_pad(
+            $courrierDepart->num_ordre_dep,
+            2,
+            '0',
+            STR_PAD_LEFT
+        );
+
+        /*
+         * 5. JOURNALISER CHAQUE TÉLÉCHARGEMENT
+         *
+         * Important :
+         * Cette instruction est exécutée à chaque appel
+         * de la méthode download().
+         *
+         * Il n'y a aucune vérification du type :
+         *
+         * "Est-ce que ce document a déjà été téléchargé ?"
+         *
+         * Donc chaque téléchargement produit une nouvelle ligne.
+         */
+        JournalActiviteService::enregistrer(
+            'DOWNLOAD',
+            'courriers_depart',
+            (int) $courrierDepart->num_ordre_dep,
+            $reference,
+            null,
+            [
+                'num_ordre_dep' => (int) $courrierDepart->num_ordre_dep,
+                'num_doc' => (int) $document->num_doc,
+                'nom_original' => $document->nom_original,
+                'download_at' => now()->format('Y-m-d H:i:s.u'),
+            ]
+        );
+
+        // 6. Retourner le fichier
         return response()->file(
             $chemin,
             [
                 'Content-Type' => $document->type_mime,
-                'Content-Disposition' => 'inline; filename="' . $document->nom_original . '"',
+                'Content-Disposition' =>
+                    'inline; filename="' . $document->nom_original . '"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
             ]
         );
     }

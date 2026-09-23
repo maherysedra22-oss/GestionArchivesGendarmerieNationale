@@ -11,31 +11,23 @@ class PieceSuiteSeeder extends Seeder
     {
         $pieces = [
             [
-                'nom_piece_suit' => 'Aucune',
+                'nom_piece_suit' => '/3-FION',
                 'actif' => true,
             ],
             [
-                'nom_piece_suit' => 'Réponse',
+                'nom_piece_suit' => '/3-DSIT',
                 'actif' => true,
             ],
             [
-                'nom_piece_suit' => 'Accusé de réception',
+                'nom_piece_suit' => '/3-DOE',
                 'actif' => true,
             ],
             [
-                'nom_piece_suit' => 'Note de service',
+                'nom_piece_suit' => '/3-DQG',
                 'actif' => true,
             ],
             [
-                'nom_piece_suit' => 'Compte rendu',
-                'actif' => true,
-            ],
-            [
-                'nom_piece_suit' => 'Rapport',
-                'actif' => true,
-            ],
-            [
-                'nom_piece_suit' => 'Demande de complément',
+                'nom_piece_suit' => '/3-COM',
                 'actif' => true,
             ],
         ];

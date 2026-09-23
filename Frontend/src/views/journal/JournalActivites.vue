@@ -1189,13 +1189,9 @@ async function loadJournal() {
      */
     const result = response || {}
 
-    journal.value =
-      Array.isArray(result.data)
-        ? result.data.filter(
-            item =>
-              String(item.action || '').toUpperCase() !== 'UPLOAD'
-          )
-        : []
+    journal.value = Array.isArray(result.data)
+      ? result.data
+      : []
 
     /* Pagination globale */
     if (result.pagination) {
@@ -2083,6 +2079,7 @@ onBeforeUnmount(() => {
   )
 })
 </script>
+
 
 <style scoped>
 

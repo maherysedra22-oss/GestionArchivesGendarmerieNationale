@@ -11,53 +11,31 @@ class NatureCourrierDepartSeeder extends Seeder
     {
         $natures = [
             [
-                'nom_nature' => 'Lettre',
+                'nom_nature' => 'Message Porte',
                 'actif' => true,
             ],
             [
-                'nom_nature' => 'Note de service',
+                'nom_nature' => 'Message Radio',
                 'actif' => true,
             ],
             [
-                'nom_nature' => 'Note d’information',
+                'nom_nature' => 'Pieces',
+                'actif' => true,
+            ],
+
+            [
+                'nom_nature' => '12 Colonnes',
                 'actif' => true,
             ],
             [
-                'nom_nature' => 'Rapport',
+                'nom_nature' => 'Designation Permanance',
                 'actif' => true,
             ],
             [
-                'nom_nature' => 'Compte rendu',
+                'nom_nature' => 'Bilan',
                 'actif' => true,
             ],
-            [
-                'nom_nature' => 'Demande',
-                'actif' => true,
-            ],
-            [
-                'nom_nature' => 'Réponse',
-                'actif' => true,
-            ],
-            [
-                'nom_nature' => 'Convocation',
-                'actif' => true,
-            ],
-            [
-                'nom_nature' => 'Invitation',
-                'actif' => true,
-            ],
-            [
-                'nom_nature' => 'Transmission',
-                'actif' => true,
-            ],
-            [
-                'nom_nature' => 'Ordre de mission',
-                'actif' => true,
-            ],
-            [
-                'nom_nature' => 'Bordereau d’envoi',
-                'actif' => true,
-            ],
+          
         ];
 
         foreach ($natures as $nature) {

@@ -3883,100 +3883,88 @@ async function chargerDocuments(
    TELECHARGER DOCUMENT
 ============================================================ */
 
-async function telechargerDocument(
-  doc
-) {
+let telechargementEnCours = new Set()
 
-  /*
-   * REGLE CRITIQUE :
-   * jamais document.id
-   * toujours doc.num_doc
-   */
-
+async function telechargerDocument(doc) {
   if (!doc?.num_doc) {
-
-    showToast(
-      'Identifiant du document introuvable.',
-      'error'
-    )
-
+    showToast('Identifiant du document introuvable.', 'error')
     return
   }
-
 
   const numOrdreDep =
-    courrierSelectionne.value
-      ?.num_ordre_dep ??
+    courrierSelectionne.value?.num_ordre_dep ??
     formulaire.num_ordre_dep
 
-
   if (!numOrdreDep) {
-
-    showToast(
-      'Numéro du courrier introuvable.',
-      'error'
-    )
-
+    showToast('Numéro du courrier introuvable.', 'error')
     return
   }
 
+  // Empêcher plusieurs téléchargements simultanés du même document
+  const cle = `${numOrdreDep}-${doc.num_doc}`
+
+  if (telechargementEnCours.has(cle)) {
+    console.log('DOWNLOAD IGNORÉ - déjà en cours', {
+      numOrdreDep,
+      numDoc: doc.num_doc
+    })
+    return
+  }
+
+  telechargementEnCours.add(cle)
 
   try {
+    const url = ENDPOINTS.documentDownload(
+      numOrdreDep,
+      doc.num_doc
+    ) + `?_t=${Date.now()}`
 
-    const response =
-      await fetch(
-        ENDPOINTS.documentDownload(
-          numOrdreDep,
-          doc.num_doc
-        ),
-        {
-          method: 'GET',
-          headers: {
-            Accept:
-              'application/octet-stream, application/pdf, application/json',
-            Authorization:
-              `Bearer ${getToken()}`
-          }
-        }
-      )
+    console.log('DOWNLOAD DEPART - REQUÊTE ENVOYÉE', {
+      url,
+      numOrdreDep,
+      numDoc: doc.num_doc,
+      nom: doc.nom_original
+    })
 
+    const response = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/octet-stream, application/pdf, application/json',
+        ...(getToken()
+          ? {
+              Authorization: `Bearer ${getToken()}`
+            }
+          : {})
+      }
+    })
 
-    if (gererErreurAuth(response)) {
-      return
-    }
+    console.log('DOWNLOAD DEPART - RÉPONSE', {
+      status: response.status,
+      ok: response.ok,
+      contentType: response.headers.get('content-type')
+    })
 
+    if (gererErreurAuth(response)) return
 
     if (!response.ok) {
-
-      const data =
-        await parseResponse(response)
+      const data = await parseResponse(response)
 
       throw new Error(
-        data?.message ||
-        'Téléchargement impossible.'
+        data?.message || 'Téléchargement impossible.'
       )
     }
 
+    const blob = await response.blob()
 
-    const blob =
-      await response.blob()
+    const urlBlob = window.URL.createObjectURL(blob)
 
+    const link = window.document.createElement('a')
 
-    const url =
-      window.URL.createObjectURL(
-        blob
-      )
-
-
-    const link =
-      window.document.createElement('a')
-
-    link.href = url
-
+    link.href = urlBlob
     link.download =
       doc.nom_original ||
       `document-${doc.num_doc}`
-
 
     window.document.body.appendChild(link)
 
@@ -3984,7 +3972,9 @@ async function telechargerDocument(
 
     link.remove()
 
-    window.URL.revokeObjectURL(url)
+    setTimeout(() => {
+      window.URL.revokeObjectURL(urlBlob)
+    }, 1000)
 
   } catch (error) {
 
@@ -3995,9 +3985,13 @@ async function telechargerDocument(
 
     showToast(
       error.message ||
-      'Impossible de télécharger le document.',
+        'Impossible de télécharger le document.',
       'error'
     )
+
+  } finally {
+
+    telechargementEnCours.delete(cle)
   }
 }
 
@@ -4014,7 +4008,7 @@ async function afficherDocument(doc) {
   showDocumentPreviewModal.value = true
   previewLoading.value = true
   try {
-    const response = await fetch(ENDPOINTS.documentDownload(numOrdreDep, doc.num_doc), { headers: { Accept: 'application/octet-stream, application/pdf, image/*', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) } })
+    const response = await fetch(ENDPOINTS.documentDownload(numOrdreDep, doc.num_doc), { cache: 'no-store', headers: { Accept: 'application/octet-stream, application/pdf, image/*', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) } })
     if (!response.ok) throw new Error('Impossible de charger l’aperçu.')
     const blob = await response.blob()
     previewUrl.value = window.URL.createObjectURL(blob)

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
+use Illuminate\Support\Facades\Log;
+
 class DocumentCourrierArriveController extends Controller
 {
     /**
@@ -239,18 +241,6 @@ class DocumentCourrierArriveController extends Controller
         );
 
         /*
-         * Journalisation de l'upload
-         */
-        JournalActiviteService::enregistrer(
-            'UPLOAD',
-            'documents_numeriques',
-            $document->num_doc,
-            null,
-            null,
-            $document->toArray()
-        );
-
-        /*
          * Journalisation de l'association
          */
         JournalActiviteService::enregistrer(
@@ -325,19 +315,26 @@ class DocumentCourrierArriveController extends Controller
         /*
          * Journalisation du téléchargement.
          */
+        $reference = 'COR_ARR' . str_pad(
+            $courrier->num_enreg_courr_arr,
+            2,
+            '0',
+            STR_PAD_LEFT
+        );
+
         JournalActiviteService::enregistrer(
             'DOWNLOAD',
-            'documents_numeriques',
-            $document->num_doc,
-            null,
+            'courriers_arrives',
+            (int) $courrier->num_enreg_courr_arr,
+            $reference,
             null,
             [
                 'num_enreg_courr_arr' => $courrier->num_enreg_courr_arr,
                 'num_doc' => $document->num_doc,
                 'nom_original' => $document->nom_original,
+                'download_at' => now()->format('Y-m-d H:i:s.u'),
             ]
         );
-
         /*
          * Récupérer le chemin physique.
          */
@@ -350,7 +347,12 @@ class DocumentCourrierArriveController extends Controller
          */
         return response()->download(
             $filePath,
-            $document->nom_original
+            $document->nom_original,
+            [
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ]
         );
     }
 
@@ -411,6 +413,11 @@ class DocumentCourrierArriveController extends Controller
         /*
          * Journalisation.
          */
+        Log::info('DOWNLOAD ARRIVE - CONTROLLER ATTEINT', [
+            'id' => $id,
+            'numDoc' => $numDoc,
+        ]);
+
         JournalActiviteService::enregistrer(
             'DETACH',
             'documents_courriers_arrives',
