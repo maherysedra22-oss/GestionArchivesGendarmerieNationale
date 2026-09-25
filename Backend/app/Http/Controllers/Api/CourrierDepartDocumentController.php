@@ -358,4 +358,67 @@ class CourrierDepartDocumentController extends Controller
             ]
         );
     }
+
+    /**
+     * Afficher / prévisualiser un document d'un courrier départ
+     *
+     * IMPORTANT :
+     * Cette méthode ne journalise PAS DOWNLOAD.
+     * Elle est accessible avec la permission documents.view.
+     */
+    public function view(int $id, int $numDoc)
+    {
+        // 1. Vérifier que le courrier départ existe
+        $courrierDepart = CourrierDepart::find($id);
+
+        if (!$courrierDepart) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Courrier départ introuvable.',
+            ], 404);
+        }
+
+        // 2. Rechercher le document associé au courrier
+        $document = $courrierDepart
+            ->documents()
+            ->where(
+                'documents_numeriques.num_doc',
+                $numDoc
+            )
+            ->first();
+
+        if (!$document) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Document introuvable ou non associé à ce courrier départ.',
+            ], 404);
+        }
+
+        // 3. Vérifier que le fichier physique existe
+        $chemin = storage_path(
+            'app/public/' . $document->chemin
+        );
+
+        if (!file_exists($chemin)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le fichier physique est introuvable.',
+                'chemin' => $document->chemin,
+            ], 404);
+        }
+
+        // 4. Retourner le fichier en affichage inline
+        // Aucun journal DOWNLOAD n'est créé ici.
+        return response()->file(
+            $chemin,
+            [
+                'Content-Type' => $document->type_mime,
+                'Content-Disposition' =>
+                    'inline; filename="' . $document->nom_original . '"',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ]
+        );
+    }
 }

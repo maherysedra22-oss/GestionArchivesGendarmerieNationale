@@ -94,7 +94,7 @@
         <input
           v-model="filters.search"
           type="search"
-          placeholder="Rechercher un document, courrier, objet..."
+          placeholder="Rechercher un document par nom, courrier, objet..."
         />
 
         <button
@@ -1578,11 +1578,11 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #dbe1ea;
+  border: 1px solid #a7bad7;
   border-radius: 9px;
   padding: 0 14px;
-  color: #334155;
-  background: #ffffff;
+  color: #0b03f2;
+  background: #f6f3f3;
   cursor: pointer;
 }
 

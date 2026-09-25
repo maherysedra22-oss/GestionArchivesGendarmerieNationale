@@ -106,7 +106,7 @@
 
         <div class="stat-content">
           <span class="stat-label">Permissions disponibles</span>
-          <strong>{{ allPermissions.length }}</strong>
+          <strong>{{ visiblePermissionsCount }}</strong>
         </div>
       </div>
 
@@ -683,8 +683,19 @@
                 </div>
 
                 <span class="permission-total">
-                  {{ selectedPermissionIds.length }}
+                  {{ visiblePermissionsCount > 0
+                    ? selectedPermissionIds.filter(id =>
+                        visiblePermissions.some(
+                          permission =>
+                            Number(permission.id_permission) === Number(id)
+                        )
+                      ).length
+                    : 0
+                  }}
+                  /
+                  {{ visiblePermissionsCount }}
                   sélectionnée(s)
+                  
                 </span>
 
               </div>
@@ -1676,13 +1687,31 @@ function getPermissionLabel(page) {
   )
 }
 
+/* ============================================================
+   PERMISSIONS GROUPING
+============================================================ */
+
+// Permissions Grades tsy aseho amin'ny formulaire
+const visiblePermissions = computed(() => {
+  return allPermissions.value.filter(permission => {
+    const code = String(
+      permission.code_permission || ''
+    ).toLowerCase()
+
+    return !code.startsWith('grades.')
+  })
+})
+
+// Compteur permissions hita amin'ny formulaire
+const visiblePermissionsCount = computed(() => {
+  return visiblePermissions.value.length
+})
+
 const permissionsByPage = computed(() => {
   const groups = {}
 
-  for (const permission of allPermissions.value) {
-
-    const page =
-      getPermissionPage(permission)
+  for (const permission of visiblePermissions.value) {
+    const page = getPermissionPage(permission)
 
     if (!groups[page]) {
       groups[page] = []
@@ -1699,9 +1728,7 @@ const permissionsByPage = computed(() => {
       permissions: permissions.sort(
         (a, b) =>
           String(a.code_permission)
-            .localeCompare(
-              String(b.code_permission)
-            )
+            .localeCompare(String(b.code_permission))
       )
     }))
 })

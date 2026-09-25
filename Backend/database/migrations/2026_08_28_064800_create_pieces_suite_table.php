@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('pieces_suite', function (Blueprint $table) {
             $table->increments('id_piece_suit');
-            $table->string('nom_piece_suit', 150)->unique();
+            $table->string('nom_piece_suit', 35)->unique();
             $table->boolean('actif')->default(true);
             $table->timestampTz('created_at')->useCurrent();
             $table->timestampTz('updated_at')->useCurrent();

@@ -110,7 +110,7 @@
               id="search"
               v-model="filters.search"
               type="text"
-              placeholder="Numéro, origine, objet..."
+              placeholder="Numéro d'origin, nom origine, objet..."
               autocomplete="off"
               @keyup.enter="searchCourriers"
             />

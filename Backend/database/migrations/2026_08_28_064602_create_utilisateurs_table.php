@@ -13,13 +13,13 @@ return new class extends Migration
 
             $table->string('matricule', 30)->unique();
 
-            $table->string('nom', 100);
+            $table->string('nom', 30);
 
-            $table->string('prenom', 100);
+            $table->string('prenom', 35)->nullable();
 
-            $table->string('poste_fonction', 150);
+            $table->string('poste_fonction', 40);
 
-            $table->string('email', 150)->unique();
+            $table->string('email', 60)->unique();
 
             $table->string('mot_de_passe', 255);
 

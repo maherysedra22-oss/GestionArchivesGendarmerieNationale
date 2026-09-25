@@ -8,69 +8,50 @@ use Illuminate\Database\Seeder;
 
 class RolePermissionSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        /*
-        |--------------------------------------------------------------------------
-        | 1. Recherche du rôle Administrateur
-        |--------------------------------------------------------------------------
-        */
-
-        $administrateur = Role::where('nom_role', 'Administrateur')
-            ->first();
+        // Recherche du rôle Administrateur
+        $administrateur = Role::where(
+            'nom_role',
+            'Administrateur'
+        )->first();
 
         if (!$administrateur) {
             $this->command->error(
-                'Le rôle Administrateur n\'existe pas dans la base de données.'
+                "Le rôle Administrateur n'existe pas."
             );
 
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2. Administrateur = rôle système
-        |--------------------------------------------------------------------------
-        */
-
+        // Administrateur = rôle système
         $administrateur->update([
             'systeme' => true,
             'actif' => true,
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | 3. Récupération de toutes les permissions actives
-        |--------------------------------------------------------------------------
-        */
-
+        // Récupérer les permissions actives
+        // en excluant le module Grades
         $permissions = Permission::where('actif', true)
+            ->where(
+                'code_permission',
+                'not like',
+                'grades.%'
+            )
             ->pluck('id_permission')
             ->toArray();
 
-        /*
-        |--------------------------------------------------------------------------
-        | 4. Donner toutes les permissions à Administrateur
-        |--------------------------------------------------------------------------
-        */
-
+        // Donner les permissions sélectionnées
+        // à Administrateur
         $administrateur->permissions()->sync($permissions);
 
-        /*
-        |--------------------------------------------------------------------------
-        | 5. Message de confirmation
-        |--------------------------------------------------------------------------
-        */
-
         $this->command->info(
-            'Le rôle Administrateur est maintenant un rôle système.'
+            'Administrateur possède maintenant les permissions actives hors Grades.'
         );
 
         $this->command->info(
-            count($permissions) . ' permissions ont été attribuées.'
+            count($permissions) .
+            ' permissions attribuées à Administrateur.'
         );
     }
 }

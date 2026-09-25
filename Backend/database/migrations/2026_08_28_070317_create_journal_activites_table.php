@@ -14,7 +14,7 @@ return new class extends Migration
 
             $table->unsignedInteger('id_utilisateur')->nullable();
 
-            $table->string('nom_utilisateur', 200)->nullable();
+            $table->string('nom_utilisateur', 70)->nullable();
 
             $table->string('action', 30);
 
@@ -22,13 +22,13 @@ return new class extends Migration
 
             $table->bigInteger('id_enregistrement')->nullable();
 
-            $table->string('reference_objet', 100)->nullable();
+            $table->string('reference_objet', 20)->nullable();
 
             $table->jsonb('donnees_avant')->nullable();
 
             $table->jsonb('donnees_apres')->nullable();
 
-            $table->string('adresse_ip', 45)->nullable();
+            $table->string('adresse_ip', 15)->nullable();
 
             $table->text('user_agent')->nullable();
 

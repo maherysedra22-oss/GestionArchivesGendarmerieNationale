@@ -11,9 +11,9 @@ return new class extends Migration
     {
         Schema::create('grades_militaires', function (Blueprint $table) {
             $table->increments('id_grade');
-            $table->string('nom_grade', 100)->unique();
+            $table->string('nom_grade', 40)->unique();
             $table->integer('ordre_hierarchique')->unique();
-            $table->string('categorie', 50);
+            $table->string('categorie', 35);
             $table->string('insigne_symbole', 20)->nullable();
             $table->boolean('actif')->default(true);
             $table->timestampTz('created_at')->useCurrent();

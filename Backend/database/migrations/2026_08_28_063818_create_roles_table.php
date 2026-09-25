@@ -15,7 +15,7 @@ return new class extends Migration
         
         Schema::create('roles', function (Blueprint $table) {
             $table->increments('id_role');
-            $table->string('nom_role', 50)->unique();
+            $table->string('nom_role', 30)->unique();
             $table->text('description')->nullable();
             $table->boolean('actif')->default(true);
             $table->timestampTz('created_at')->useCurrent();

@@ -104,6 +104,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // DOCUMENTS DES COURRIERS ARRIVÉS
     // ========================================================================
 
+    //affichage
+    Route::get(
+        '/courriers-depart/{id}/documents/{numDoc}/view',
+        [CourrierDepartDocumentController::class, 'view']
+    )->middleware('permission:documents.view');
     // Liste des documents
     Route::get(
         '/courriers-arrives/{id}/documents',

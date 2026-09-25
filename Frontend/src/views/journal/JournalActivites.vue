@@ -127,7 +127,7 @@
             <input
               v-model="filters.search"
               type="text"
-              placeholder="Utilisateur, action, référence, IP..."
+              placeholder="Nom d'utilisateur, action, référence, IP..."
               @keyup.enter="applyFilters"
             />
 

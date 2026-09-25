@@ -2546,13 +2546,6 @@ function validateForm() {
   }
 
   if (
-    !form.value.prenom.trim()
-  ) {
-    errors.prenom =
-      'Le prénom est obligatoire.'
-  }
-
-  if (
     !form.value.poste_fonction.trim()
   ) {
     errors.poste_fonction =
@@ -4694,7 +4687,7 @@ onUnmounted(() => {
 .switch-slider {
   position: absolute;
   inset: 0;
-  background: #cbd5e1;
+  background: rgba(0, 0, 0, 0.5);
   border-radius: 999px;
   cursor: pointer;
   transition: 0.2s ease;
@@ -4707,7 +4700,7 @@ onUnmounted(() => {
   height: 19px;
   left: 3px;
   top: 3px;
-  background: white;
+  background: darkblue;
   border-radius: 50%;
   box-shadow:
     0 2px 5px rgba(15,23,42,0.2);

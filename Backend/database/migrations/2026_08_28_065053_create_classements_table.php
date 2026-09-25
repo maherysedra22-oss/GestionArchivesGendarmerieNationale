@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('classements', function (Blueprint $table) {
             $table->increments('id_class');
 
-            $table->string('nom_class', 150);
+            $table->string('nom_class', 35);
 
             $table->string('type_courrier', 10);
 

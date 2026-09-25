@@ -111,7 +111,7 @@
           <input
             v-model="filtres.search"
             type="text"
-            placeholder="Rechercher un courrier..."
+            placeholder="Recherche par numéro ou objet ..."
             @keyup.enter="appliquerFiltres"
           />
 
@@ -1944,6 +1944,9 @@ const ENDPOINTS = {
 
   documents: (numOrdreDep) =>
     `${API_BASE}/courriers-depart/${encodeURIComponent(numOrdreDep)}/documents`,
+
+  documentView: (numOrdreDep, numDoc) =>
+  `${API_BASE}/courriers-depart/${encodeURIComponent(numOrdreDep)}/documents/${encodeURIComponent(numDoc)}/view`,
 
   documentDownload: (numOrdreDep, numDoc) =>
     `${API_BASE}/courriers-depart/${encodeURIComponent(numOrdreDep)}/documents/${encodeURIComponent(numDoc)}/download`,
@@ -4008,7 +4011,7 @@ async function afficherDocument(doc) {
   showDocumentPreviewModal.value = true
   previewLoading.value = true
   try {
-    const response = await fetch(ENDPOINTS.documentDownload(numOrdreDep, doc.num_doc), { cache: 'no-store', headers: { Accept: 'application/octet-stream, application/pdf, image/*', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) } })
+    const response = await fetch(ENDPOINTS.documentView(numOrdreDep, doc.num_doc), { cache: 'no-store', headers: { Accept: 'application/octet-stream, application/pdf, image/*', ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) } })
     if (!response.ok) throw new Error('Impossible de charger l’aperçu.')
     const blob = await response.blob()
     previewUrl.value = window.URL.createObjectURL(blob)
@@ -4933,9 +4936,9 @@ onMounted(async () => {
 
 
 .btn-light {
-  color: #344054;
-  background: white;
-  border-color: #d9dee7;
+  color: rgb(5, 5, 90);
+  background: rgb(235, 229, 229);
+  border-color: #a5aebd;
 }
 
 
@@ -5366,7 +5369,7 @@ tbody tr:hover {
   padding: 5px 8px;
   border-radius: 7px;
   background: #eef4ff;
-  color: #1d4ed8;
+  color: rgb(62, 62, 184);
   font-weight: 750;
 }
 

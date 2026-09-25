@@ -29,18 +29,30 @@ class CourrierDepartController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Recherche par objet
+        | Recherche par numéro ou objet
         |--------------------------------------------------------------------------
         */
         if ($request->filled('search')) {
 
-            $search = $request->search;
+            $search = trim($request->search);
 
-            $query->where(
-                'objet_courr_dep',
-                'ILIKE',
-                "%{$search}%"
-            );
+            if (is_numeric($search)) {
+
+                // Recherche exacte par numéro d'ordre
+                $query->where(
+                    'num_ordre_dep',
+                    (int) $search
+                );
+
+            } else {
+
+                // Recherche par objet du courrier
+                $query->where(
+                    'objet_courr_dep',
+                    'ILIKE',
+                    "%{$search}%"
+                );
+            }
         }
 
         /*

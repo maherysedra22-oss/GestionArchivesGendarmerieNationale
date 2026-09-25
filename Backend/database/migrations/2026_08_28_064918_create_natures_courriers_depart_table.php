@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('natures_courriers_depart', function (Blueprint $table) {
             $table->increments('num_nat');
-            $table->string('nom_nature', 150)->unique();
+            $table->string('nom_nature', 35)->unique();
             $table->boolean('actif')->default(true);
             $table->timestampTz('created_at')->useCurrent();
             $table->timestampTz('updated_at')->useCurrent();

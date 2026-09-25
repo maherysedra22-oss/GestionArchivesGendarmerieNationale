@@ -42,7 +42,7 @@ return new class extends Migration
             | Exemple : 447/2
             */
 
-            $table->string('num_ordre_orig', 100);
+            $table->string('num_ordre_orig', 15);
 
 
             /*
@@ -52,7 +52,7 @@ return new class extends Migration
             | Exemple : DQG/SRH
             */
 
-            $table->string('lib_orig', 255);
+            $table->string('lib_orig', 45);
 
 
             /*
@@ -94,7 +94,7 @@ return new class extends Migration
             | TRES_URGENT
             */
 
-            $table->string('priorite', 20)
+            $table->string('priorite', 15)
                 ->default('NORMAL');
 
 
@@ -109,7 +109,7 @@ return new class extends Migration
             | Archivé
             */
 
-            $table->string('statut_dossier', 20)
+            $table->string('statut_dossier', 15)
                 ->default('En cours');
 
 

@@ -12,7 +12,7 @@ return new class extends Migration
         Schema::create('documents_numeriques', function (Blueprint $table) {
             $table->increments('num_doc');
 
-            $table->string('nom_original', 255);
+            $table->string('nom_original', 50);
 
             $table->string('nom_stockage', 255)->unique();
 

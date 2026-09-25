@@ -211,7 +211,7 @@ class UtilisateurController extends Controller
             ],
 
             'prenom' => [
-                'required',
+                'nullable',
                 'string',
                 'max:100',
             ],
@@ -314,8 +314,9 @@ class UtilisateurController extends Controller
                         'nom' =>
                             trim($validated['nom']),
 
-                        'prenom' =>
-                            trim($validated['prenom']),
+                        'prenom' => isset($validated['prenom'])
+                            ? trim($validated['prenom'])
+                            : null,
 
                         'poste_fonction' =>
                             trim($validated['poste_fonction']),
@@ -446,7 +447,8 @@ class UtilisateurController extends Controller
             ],
 
             'prenom' => [
-                'required',
+                'sometimes',
+                'nullable',
                 'string',
                 'max:100',
             ],
@@ -510,8 +512,13 @@ class UtilisateurController extends Controller
                         'nom' =>
                             trim($validated['nom']),
 
-                        'prenom' =>
-                            trim($validated['prenom']),
+                        'prenom' => array_key_exists('prenom', $validated)
+                            ? (
+                                $validated['prenom'] !== null
+                                    ? trim($validated['prenom'])
+                                    : null
+                            )
+                            : $user->prenom,
 
                         'poste_fonction' =>
                             trim($validated['poste_fonction']),

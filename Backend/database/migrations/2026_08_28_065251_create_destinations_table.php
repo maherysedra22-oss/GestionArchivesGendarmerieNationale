@@ -14,7 +14,7 @@ return new class extends Migration
 
             $table->string(
                 'lib_officiel_desti',
-                255
+                60
             )->unique();
 
             $table->boolean('actif')
